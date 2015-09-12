@@ -37,7 +37,6 @@ load-plugins=
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
-disable=W0142
 
 
 [REPORTS]
@@ -200,7 +199,7 @@ ignore-mixin-members=yes
 # List of module names for which member attributes should not be checked
 # (useful for modules/projects where namespaces are manipulated during runtime
 # and thus extisting member attributes cannot be deduced by static analysis
-ignored-modules=ujson,alignak
+ignored-modules=ujson
 
 # List of classes names for which member attributes should not be checked
 # (useful for classes with attributes dynamically set).
