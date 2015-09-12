@@ -21,7 +21,6 @@
 """
 This module is a wrapper to get, post, patch, delete in alignak-backend
 """
-
 import requests
 
 
