@@ -20,7 +20,7 @@ except ImportError:
 # Better to use exec to load the VERSION from alignak/bin/__init__
 # so to not have to import the alignak package:
 VERSION = "unknown"
-ver_file = os.path.join('alignakbackend-api-client',
+ver_file = os.path.join('alignakbackend_api_client',
                         '__init__.py')
 with open(ver_file) as fh:
     exec(fh.read())
@@ -32,6 +32,6 @@ setuptools.setup(
     setup_requires=['pbr'],
     packages=packages,
     version=VERSION,
-    namespace_packages=['alignakbackend-api-client'],
+    namespace_packages=['alignakbackend_api_client'],
     pbr=True,
 )
