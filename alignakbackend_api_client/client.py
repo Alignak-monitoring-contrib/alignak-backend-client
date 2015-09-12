@@ -23,8 +23,6 @@ This module is a wrapper to get, post, patch, delete in alignak-backend
 """
 
 import requests
-# pylint: disable=F0401
-from alignak.log import logger
 
 
 class Backend(object):
@@ -100,7 +98,7 @@ class Backend(object):
             return response.json()
         elif response.status_code == 412:
             # 412 means Precondition failed
-            logger.error(response.content)
+            #logger.error(response.content)
             if 'Client and server etags don' in response.content:
                 # update etag + retry
                 if stop_inception:
@@ -109,7 +107,7 @@ class Backend(object):
                 headers['If-Match'] = resp['_etag']
                 return self.method_patch(endpoint, data_json, headers, True)
         else:
-            logger.error("%s: %s for %s" % (response.status_code, response.content, endpoint))
+            #logger.error("%s: %s for %s" % (response.status_code, response.content, endpoint))
             return response.json()
 
     @classmethod
