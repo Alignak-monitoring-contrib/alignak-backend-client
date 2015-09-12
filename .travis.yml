@@ -18,7 +18,7 @@ script:
   - nosetests -xv --process-restartworker --processes=1 --process-timeout=300  --with-coverage --cover-package=alignak
   - coverage combine
   - cd .. && pep8 --max-line-length=100 --exclude='*.pyc' alignakbackend_api_client/*
-  - pylint --rcfile=.pylintrc --disable=I0011 --disable=E1101 --disable=R0801 -r no alignakbackend_api_client/*
+  - pylint --rcfile=.pylintrc --disable=I0011 --disable=E1101 --disable=R0801 --disable=F0010 -r no alignakbackend_api_client/*
   - pep257 --select=D300 alignakbackend_api_client
 # specific call to launch coverage data into coveralls.io
 after_success:
