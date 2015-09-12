@@ -22,7 +22,7 @@
 from httmock import all_requests, response, HTTMock
 import ujson
 import unittest2
-from alignakbackend-api-client.client import Backend
+from alignakbackend_api_client.client import Backend
 
 @all_requests
 def response_patch(url, request):

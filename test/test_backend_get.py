@@ -21,7 +21,7 @@
 
 from httmock import all_requests, response, HTTMock
 import unittest2
-from alignakbackend-api-client.client import Backend
+from alignakbackend_api_client.client import Backend
 
 @all_requests
 def response_get_simple(url, request):
