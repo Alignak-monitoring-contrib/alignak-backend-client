@@ -17,8 +17,8 @@ script:
   - pip freeze  # so to help eventual debug: know what exact versions are in use can be rather useful.
   - nosetests -xv --process-restartworker --processes=1 --process-timeout=300  --with-coverage --cover-package=alignak
   - coverage combine
-  - cd .. && pep8 --max-line-length=100 --exclude='*.pyc' alignakbackend-api-client/*
-  - pylint --rcfile=.pylintrc --disable=I0011 --disable=E1101 -r no alignakbackend-api-client/*
+  - cd .. && pep8 --max-line-length=100 --exclude='*.pyc' alignakbackend_api_client/*
+  - pylint --rcfile=.pylintrc --disable=I0011 --disable=E1101 -r no alignakbackend_api_client/*
   - pep257 --select=D300 alignak
 # specific call to launch coverage data into coveralls.io
 after_success:
