@@ -1,0 +1,52 @@
+# Project files #
+######################
+*.egg-info
+*.egg-tmp/
+.eggs/
+build
+dist
+INSTALLED_FILES
+.project
+.pydevproject
+.settings
+modules/*
+
+# Logs and databases #
+######################
+*.log*
+*.sqlite
+*.db*
+
+
+# OS generated files #
+######################
+*.pyc
+*.DS_Store*
+ehthumbs.db
+Icon?
+Thumbs.db
+*.pid
+._.*
+*~
+*.swp
+\#*#
+
+*.debug
+*pack_distribution.dat
+test/tmp/*dat
+env/
+
+# Documentation #
+#################
+docs/build
+docs/tools/media/
+docs/tools/pages/
+
+
+# test and coverage
+test/tmp/.cov*
+
+
+# Pbr
+pbr-*.egg/
+
