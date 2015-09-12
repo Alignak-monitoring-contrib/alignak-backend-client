@@ -34,7 +34,7 @@ def response_patch(url, request):
             content = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">\n<title>412 Precondition Failed</title>\n<h1>Precondition Failed</h1>\n<p>Client and server etags don\'t match</p>\n'
             return {'content': content, 'headers': {'content-type': 'application/json'}, 'status_code': 412, 'elapsed': 5}
     elif request.method == 'GET':
-        content = {"_updated": "Wed, 19 Aug 2015 07:59:51 GMT", "last_state_change": 1439818531, "acknowledged": False, "last_check": 1439789562, "long_output": null, "state": "UP", "_links": {"self": {"href": "livehost/55d113976376e9835e1b2feb", "title": "Livehost"}, "collection": {"href": "livehost", "title": "livehost"}, "parent": {"href": "/", "title": "home"}}, "host_name": "55d113586376e9835e1b2fe6", "_created": "Sun, 16 Aug 2015 22:49:59 GMT", "services": null, "output": "[Errno 2] No such file or directory", "_id": "55d113976376e9835e1b2feb", "_etag": "27f88f9749259b53ccaf48331074fa54d092e1cc"}
+        content = {"_updated": "Wed, 19 Aug 2015 07:59:51 GMT", "last_state_change": 1439818531, "acknowledged": False, "last_check": 1439789562, "long_output": None, "state": "UP", "_links": {"self": {"href": "livehost/55d113976376e9835e1b2feb", "title": "Livehost"}, "collection": {"href": "livehost", "title": "livehost"}, "parent": {"href": "/", "title": "home"}}, "host_name": "55d113586376e9835e1b2fe6", "_created": "Sun, 16 Aug 2015 22:49:59 GMT", "services": None, "output": "[Errno 2] No such file or directory", "_id": "55d113976376e9835e1b2feb", "_etag": "27f88f9749259b53ccaf48331074fa54d092e1cc"}
     return {'content': content, 'headers': {'content-type': 'application/json'}, 'status_code': 200, 'elapsed': 5}
 
 @all_requests
@@ -47,7 +47,7 @@ def response_patch_notok(url, request):
             content = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">\n<title>412 Precondition Failed</title>\n<h1>Precondition Failed</h1>\n<p>Client and server etags don\'t match</p>\n'
             return {'content': content, 'headers': {'content-type': 'application/json'}, 'status_code': 412, 'elapsed': 5}
     elif request.method == 'GET':
-        content = {"_updated": "Wed, 19 Aug 2015 07:59:51 GMT", "last_state_change": 1439818531, "acknowledged": False, "last_check": 1439789562, "long_output": null, "state": "UP", "_links": {"self": {"href": "livehost/55d113976376e9835e1b2feb", "title": "Livehost"}, "collection": {"href": "livehost", "title": "livehost"}, "parent": {"href": "/", "title": "home"}}, "host_name": "55d113586376e9835e1b2fe6", "_created": "Sun, 16 Aug 2015 22:49:59 GMT", "services": null, "output": "[Errno 2] No such file or directory", "_id": "55d113976376e9835e1b2feb", "_etag": "27f88f9749259b53ccaf48331074fa54d092e1ce"}
+        content = {"_updated": "Wed, 19 Aug 2015 07:59:51 GMT", "last_state_change": 1439818531, "acknowledged": False, "last_check": 1439789562, "long_output": None, "state": "UP", "_links": {"self": {"href": "livehost/55d113976376e9835e1b2feb", "title": "Livehost"}, "collection": {"href": "livehost", "title": "livehost"}, "parent": {"href": "/", "title": "home"}}, "host_name": "55d113586376e9835e1b2fe6", "_created": "Sun, 16 Aug 2015 22:49:59 GMT", "services": None, "output": "[Errno 2] No such file or directory", "_id": "55d113976376e9835e1b2feb", "_etag": "27f88f9749259b53ccaf48331074fa54d092e1ce"}
         return {'content': content, 'headers': {'content-type': 'application/json'}, 'status_code': 200, 'elapsed': 5}
 
 
