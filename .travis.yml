@@ -19,7 +19,7 @@ script:
   - coverage combine
   - cd .. && pep8 --max-line-length=100 --exclude='*.pyc' alignakbackend_api_client/*
   - pylint --rcfile=.pylintrc --disable=I0011 --disable=E1101 -r no alignakbackend_api_client/*
-  - pep257 --select=D300 alignak
+  - pep257 --select=D300 alignakbackend_api_client
 # specific call to launch coverage data into coveralls.io
 after_success:
   # to get coverage data with relative paths and not absolute we have to
