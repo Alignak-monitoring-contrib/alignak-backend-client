@@ -73,7 +73,7 @@ class TestBackendGet(unittest2.TestCase):
         backend = Backend()
 
         with HTTMock(response_get_all):
-            resp = backend.method_get('http://alignakbackend.local/host?projection={"host_name":1}', )
+            resp = backend.method_get('http://alignakbackend.local/host?projection={"host_name":1}')
 
         self.assertEqual([{u'_updated': u'Thu, 01 Jan 1970 00:00:00 GMT', u'_links': {u'self': {u'href': u'host/55d46cf26376e91e92122256', u'title': u'Host'}}, u'host_name': u'server2', u'_created': u'Thu, 01 Jan 1970 00:00:00 GMT', u'_id': u'55d46cf26376e91e92122256', u'_etag': u'f4433b9dfd4fce9b07bc3ad8e64708d7013b9b0b'},
                           {u'_updated': u'Thu, 01 Jan 1970 00:00:00 GMT', u'_links': {u'self': {u'href': u'host/55d46cf66376e91e92122257', u'title': u'Host'}}, u'host_name': u'server3', u'_created': u'Thu, 01 Jan 1970 00:00:00 GMT', u'_id': u'55d46cf66376e91e92122257', u'_etag': u'f9cd8d7f09d8e1343d5c6717aa96cbe20077f1fa'},
