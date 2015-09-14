@@ -29,12 +29,14 @@ class Backend(object):
     Backend class to communicate with alignak-backend
     """
 
-    def method_get(self, endpoint):
+    def method_get(self, endpoint, allpages=True):
         """
         Get items or item in alignak backend
 
         :param endpoint: endpoint (API URL)
         :type endpoint: str
+        :param allpages: if True get all pages, otherwise only the first page
+        :type allpages: bool
         :return: list of properties when query item | list of items when get many items
         :rtype: list
         """
@@ -42,6 +44,8 @@ class Backend(object):
         resp = response.json()
         if '_items' in resp:
             items = resp['_items']
+            if not allpages:
+                return items
             if 'next' in resp['_links']:
                 # It has pagination, so get items of all pages
                 page_number = resp['_links']['next']['href'].split('page=')
