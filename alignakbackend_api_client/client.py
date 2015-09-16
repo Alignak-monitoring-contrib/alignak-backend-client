@@ -22,6 +22,7 @@
 This module is a wrapper to get, post, patch, delete in alignak-backend
 """
 import requests
+from requests.auth import HTTPBasicAuth
 
 
 class Backend(object):
@@ -29,7 +30,7 @@ class Backend(object):
     Backend class to communicate with alignak-backend
     """
 
-    def method_get(self, endpoint, allpages=True):
+    def method_get(self, endpoint, allpages=True, login='', passwd=''):
         """
         Get items or item in alignak backend
 
@@ -37,10 +38,17 @@ class Backend(object):
         :type endpoint: str
         :param allpages: if True get all pages, otherwise only the first page
         :type allpages: bool
+        :param login: login name for auth basic
+        :type login: str
+        :param passwd: password for auth basic
+        :type passwd: str
         :return: list of properties when query item | list of items when get many items
         :rtype: list
         """
-        response = requests.get(endpoint)
+        params = {}
+        if login != '' and passwd != '':
+            params['auth'] = HTTPBasicAuth(login, passwd)
+        response = requests.get(endpoint, params)
         resp = response.json()
         if '_items' in resp:
             items = resp['_items']
@@ -65,7 +73,7 @@ class Backend(object):
         return resp
 
     @classmethod
-    def method_post(cls, endpoint, data_json, headers):
+    def method_post(cls, endpoint, data_json, headers, login='', passwd=''):
         """
         Create a new item
 
@@ -75,13 +83,21 @@ class Backend(object):
         :type data_json:str
         :param headers: headers (example: Content-Type)
         :type headers: dict
+        :param login: login name for auth basic
+        :type login: str
+        :param passwd: password for auth basic
+        :type passwd: str
         :return: response (creation information)
         :rtype: dict
         """
-        response = requests.post(endpoint, data_json, headers=headers)
+        params = {}
+        if login != '' and passwd != '':
+            params['auth'] = HTTPBasicAuth(login, passwd)
+        params['headers'] = headers
+        response = requests.post(endpoint, data_json, params)
         return response.json()
 
-    def method_patch(self, endpoint, data_json, headers, stop_inception=False):
+    def method_patch(self, endpoint, data_json, headers, stop_inception=False, login='', passwd=''):
         """
         Method to update an item
 
@@ -93,10 +109,18 @@ class Backend(object):
         :type headers: dict
         :param stop_inception: if false try to get the right etag
         :type stop_inception: bool
+        :param login: login name for auth basic
+        :type login: str
+        :param passwd: password for auth basic
+        :type passwd: str
         :return: dictionary with response of update fields
         :rtype: dict
         """
-        response = requests.patch(endpoint, data_json, headers=headers)
+        params = {}
+        if login != '' and passwd != '':
+            params['auth'] = HTTPBasicAuth(login, passwd)
+        params['headers'] = headers
+        response = requests.patch(endpoint, data_json, params)
         if response.status_code == 200:
             return response.json()
         elif response.status_code == 412:
@@ -114,12 +138,19 @@ class Backend(object):
             return response.json()
 
     @classmethod
-    def method_delete(cls, endpoint):
+    def method_delete(cls, endpoint, login='', passwd=''):
         """
         Method to delete an item or all items
 
         :param endpoint: endpoint (API URL)
         :type endpoint: str
+        :param login: login name for auth basic
+        :type login: str
+        :param passwd: password for auth basic
+        :type passwd: str
         :return: None
         """
-        requests.delete(endpoint)
+        params = {}
+        if login != '' and passwd != '':
+            params['auth'] = HTTPBasicAuth(login, passwd)
+        requests.delete(endpoint, params)
