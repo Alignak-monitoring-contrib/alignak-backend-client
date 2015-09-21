@@ -65,6 +65,11 @@ class Backend(object):
         """
         Log into the backend and get the token
 
+        generate parameter may have following values:
+        - enabled: require current token (default)
+        - force: force new token generation
+        - disabled
+
         :param username: login name
         :type username: str
         :param password: password
@@ -92,7 +97,7 @@ class Backend(object):
                 params['action'] = 'generate'
 
             response = requests.post(
-                ''.join([self.url_endpoint_root, 'login']),
+                '/'.join([self.url_endpoint_root, 'login']),
                 json=params,
                 headers=headers
             )
@@ -105,10 +110,7 @@ class Backend(object):
             raise BackendException(1003, "Backend connection exception")
 
         resp = response.json()
-        log.info(
-            "authentication response: %s",
-            resp
-        )
+        log.info("authentication response: %s", resp)
 
         if '_status' in resp:
             # Considering an information is returned if a _status field is present ...
@@ -121,66 +123,203 @@ class Backend(object):
                 "authentication, error: %s, %s",
                 error['code'], error['message']
             )
-
             raise BackendException(error['code'], error['message'])
 
         else:
-            if 'token' not in resp:  # pragma: no cover
-                log.error("User authentication failed")
-                raise BackendException(1003, "User authentication failed")
-
             if 'token' in resp:
                 self.token = resp['token']
                 self.authenticated = True
-                log.info(
-                    "user authenticated: %s, token: %s", username, self.token
-                )
+                log.info("user authenticated: %s, token: %s", username, self.token)
                 return True
             elif generate == 'force':
+                log.error("Token generation required but none provided.")
+                raise BackendException(1004, "Token not provided")
                 return False
             elif generate == 'disabled':
+                log.error("Token disabled ... to be implemented!")
                 return False
             elif generate == 'enabled':
+                log.debug("Token enabled, but none provided, require new token generation")
                 return self.login(username, password, 'force')
             return False
 
-    def method_get(self, endpoint, allpages=True):
+    def logout(self):
+        """
+        Logout from the backen
+
+        :return: return True if authentication is successfull, otherwise False
+        :rtype: bool
+        """
+        log.info("request backend logout")
+
+        try:
+            params = {'auth': HTTPBasicAuth(self.token, '')}
+            response = requests.post(
+                '/'.join([self.url_endpoint_root, 'logout']),
+                params
+            )
+            response.raise_for_status()
+        except Timeout as e:
+            log.error("Backend connection timeout, error: %s", str(e))
+            raise BackendException(1002, "Backend connection timeout")
+        except Exception as e:
+            log.error("Backend connection exception, error: %s / %s", type(e), str(e))
+            raise BackendException(1003, "Backend connection exception")
+
+        self.authenticated = False
+        self.token = None
+
+        return True
+
+    def get_domains(self):
+        """
+        Connect to alignak backend and retrieve all available child endpoints of root
+
+        If connection is successfull, returns a list of all the resources available in the backend:
+        Each resource is identified with its title and provides its endpoint relative to backend
+        root endpoint.
+            [
+                {u'href': u'loghost', u'title': u'loghost'},
+                {u'href': u'escalation', u'title': u'escalation'},
+                ...
+            ]
+
+        If an error occurs a BackendException is raised.
+
+        If an exception occurs, it is raised to caller.
+
+        :return: list of available resources
+        :rtype: list
+        """
+        try:
+            log.info("trying to connect to backend: %s", self.url_endpoint_root)
+            auth = None
+            if self.token:
+                auth = HTTPBasicAuth(self.token, None)
+
+            response = requests.get(self.url_endpoint_root, auth=auth)
+            resp = response.json()
+            if '_status' in resp:  # pragma: no cover - need specific backend tests
+                # Considering an information is returned if a _status field is present ...
+                log.warning("backend status: %s", resp['_status'])
+
+            if '_error' in resp:  # pragma: no cover - need specific backend tests
+                # Considering a problem occured is an _error field is present ...
+                error = resp['_error']
+                log.error(
+                    "backend not available, error: %s, %s",
+                    error['code'], error['message']
+                )
+
+                raise BackendException(error['code'], error['message'])
+            else:
+                log.debug("received data: %s", resp)
+                if "_links" in resp:
+                    _links = resp["_links"]
+                    if "child" in _links:
+                        return _links["child"]
+        except Exception as e:  # pragma: no cover - need specific backend tests
+            raise e
+
+        return resp  # pragma: no cover - need specific backend tests
+
+    def method_get(self, endpoint, parameters=None):
         """
         Get items or item in alignak backend
 
-        :param endpoint: endpoint (API URL)
+        If an error occurs, a BackendException is raised.
+
+        :param endpoint: endpoint (API URL) relative from root endpoint
         :type endpoint: str
-        :param allpages: if True get all pages, otherwise only the first page
-        :type allpages: bool
+        :param parameters: list of parameters for the backend API
+        :type parameters: list
         :return: list of properties when query item | list of items when get many items
         :rtype: list
         """
-        if not self.token:
-            return {}
-        params = {'auth': HTTPBasicAuth(self.token, '')}
-        response = requests.get(endpoint, params)
+        log.info("method_get, endpoint: %s, parameters: %s", endpoint, parameters)
+        auth = None
+        if self.token:
+            auth = HTTPBasicAuth(self.token, '')
+
+        response = requests.get(
+            '/'.join([self.url_endpoint_root, endpoint]),
+            auth=auth, params=parameters
+        )
         resp = response.json()
-        if '_items' in resp:
-            items = resp['_items']
-            if not allpages:
-                return items
-            if 'next' in resp['_links']:
-                # It has pagination, so get items of all pages
-                page_number = resp['_links']['next']['href'].split('page=')
-                separator = '?'
-                if '?page=' in endpoint:
-                    endpoint_plit = endpoint.split('?page=')
-                    endpoint = endpoint_plit[0]
-                elif '?' in endpoint:
-                    separator = '&'
-                    if '&page=' in endpoint:
-                        endpoint_plit = endpoint.split('&page=')
-                        endpoint = endpoint_plit[0]
-                next_response = self.method_get(separator.join(
-                    [endpoint, ''.join(['page=', page_number[1]])]))
-                items.extend(next_response)
-            return items
+        if '_status' in resp:  # pragma: no cover - need specific backend tests
+            # Considering an information is returned if a _status field is present ...
+            log.warning("backend status: %s", resp['_status'])
+
+        if '_error' in resp:  # pragma: no cover - need specific backend tests
+            # Considering a problem occured is an _error field is present ...
+            error = resp['_error']
+            log.error(
+                "backend error: %s, %s",
+                error['code'], error['message']
+            )
+            raise BackendException(error['code'], error['message'])
+
         return resp
+
+    def method_get_all(self, endpoint, parameters=None):
+        """
+        Get all items in the specified endpoint of alignak backend
+
+        If an error occurs, a BackendException is raised.
+
+        If the max_results parameter is not specified in parameters, it is set to 200
+        (backend maximum value) to limit requests number.
+
+        :param endpoint: endpoint (API URL) relative from root endpoint
+        :type endpoint: str
+        :param parameters: list of parameters for the backend API
+        :type parameters: list
+        :return: list of properties when query item | list of items when get many items
+        :rtype: list
+        """
+        log.info("method_get_all, endpoint: %s, parameters: %s", endpoint, parameters)
+        auth = None
+        if self.token:
+            auth = HTTPBasicAuth(self.token, '')
+
+        # Set max results at maximum value supported by the backend to limit requests number
+        if not parameters:
+            parameters = {'max_results': 200}
+        elif parameters and 'max_results' not in parameters:
+            parameters['max_results'] = 200
+
+        try:
+            # Get first page
+            last_page = False
+            items = []
+            while not last_page:
+                # Get elements ...
+                resp = self.method_get(endpoint, parameters)
+                # Response contains:
+                # _items:
+                # ...
+                # _links:
+                #  self, parent, prev, last, next
+                # _meta:
+                # - max_results, total, page
+
+                page_number = int(resp['_meta']['page'])
+                total = int(resp['_meta']['total'])
+                max_results = int(resp['_meta']['max_results'])
+
+                if 'next' in resp['_links']:
+                    # Go to next page ...
+                    parameters['page'] = page_number + 1
+                    parameters['max_results'] = max_results
+                else:
+                    last_page = True
+                items.extend(resp['_items'])
+
+            return items
+        except Exception as e:  # pragma: no cover - need specific backend tests
+            raise e
+
+        return []
 
     def method_post(self, endpoint, data_json, headers):
         """
