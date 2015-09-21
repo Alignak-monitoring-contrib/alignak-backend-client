@@ -134,7 +134,6 @@ class Backend(object):
             elif generate == 'force':
                 log.error("Token generation required but none provided.")
                 raise BackendException(1004, "Token not provided")
-                return False
             elif generate == 'disabled':
                 log.error("Token disabled ... to be implemented!")
                 return False
@@ -145,18 +144,21 @@ class Backend(object):
 
     def logout(self):
         """
-        Logout from the backen
+        Logout from the backend
 
-        :return: return True if authentication is successfull, otherwise False
+        :return: return True if logout is successfull, otherwise False
         :rtype: bool
         """
+        if not self.token or not self.authenticated:
+            log.warning("Unnecessary logout ...")
+            return True
+
         log.info("request backend logout")
 
         try:
-            params = {'auth': HTTPBasicAuth(self.token, '')}
             response = requests.post(
                 '/'.join([self.url_endpoint_root, 'logout']),
-                params
+                auth=HTTPBasicAuth(self.token, '')
             )
             response.raise_for_status()
         except Timeout as e:
@@ -191,13 +193,17 @@ class Backend(object):
         :return: list of available resources
         :rtype: list
         """
-        try:
-            log.info("trying to connect to backend: %s", self.url_endpoint_root)
-            auth = None
-            if self.token:
-                auth = HTTPBasicAuth(self.token, None)
+        if not self.token:
+            log.error("Authentication required for getting an object.")
+            raise BackendException(1001, "Access denied, please login before trying to get")
 
-            response = requests.get(self.url_endpoint_root, auth=auth)
+        log.info("trying to get domains from backend: %s", self.url_endpoint_root)
+
+        try:
+            response = requests.get(
+                self.url_endpoint_root,
+                auth=HTTPBasicAuth(self.token, '')
+            )
             resp = response.json()
             if '_status' in resp:  # pragma: no cover - need specific backend tests
                 # Considering an information is returned if a _status field is present ...
@@ -223,7 +229,7 @@ class Backend(object):
 
         return resp  # pragma: no cover - need specific backend tests
 
-    def method_get(self, endpoint, parameters=None):
+    def method_get(self, endpoint, params=None):
         """
         Get items or item in alignak backend
 
@@ -231,19 +237,21 @@ class Backend(object):
 
         :param endpoint: endpoint (API URL) relative from root endpoint
         :type endpoint: str
-        :param parameters: list of parameters for the backend API
-        :type parameters: list
+        :param params: list of parameters for the backend API
+        :type params: list
         :return: list of properties when query item | list of items when get many items
         :rtype: list
         """
-        log.info("method_get, endpoint: %s, parameters: %s", endpoint, parameters)
-        auth = None
-        if self.token:
-            auth = HTTPBasicAuth(self.token, '')
+        if not self.token:
+            log.error("Authentication required for getting an object.")
+            raise BackendException(1001, "Access denied, please login before trying to get")
+
+        log.info("method_get, endpoint: %s, parameters: %s", endpoint, params)
 
         response = requests.get(
             '/'.join([self.url_endpoint_root, endpoint]),
-            auth=auth, params=parameters
+            params=params,
+            auth=HTTPBasicAuth(self.token, '')
         )
         resp = response.json()
         if '_status' in resp:  # pragma: no cover - need specific backend tests
@@ -261,7 +269,7 @@ class Backend(object):
 
         return resp
 
-    def method_get_all(self, endpoint, parameters=None):
+    def method_get_all(self, endpoint, params=None):
         """
         Get all items in the specified endpoint of alignak backend
 
@@ -272,21 +280,22 @@ class Backend(object):
 
         :param endpoint: endpoint (API URL) relative from root endpoint
         :type endpoint: str
-        :param parameters: list of parameters for the backend API
-        :type parameters: list
+        :param params: list of parameters for the backend API
+        :type params: list
         :return: list of properties when query item | list of items when get many items
         :rtype: list
         """
-        log.info("method_get_all, endpoint: %s, parameters: %s", endpoint, parameters)
-        auth = None
-        if self.token:
-            auth = HTTPBasicAuth(self.token, '')
+        if not self.token:
+            log.error("Authentication required for getting an object.")
+            raise BackendException(1001, "Access denied, please login before trying to get")
+
+        log.info("method_get_all, endpoint: %s, parameters: %s", endpoint, params)
 
         # Set max results at maximum value supported by the backend to limit requests number
-        if not parameters:
-            parameters = {'max_results': 200}
-        elif parameters and 'max_results' not in parameters:
-            parameters['max_results'] = 200
+        if not params:
+            params = {'max_results': 200}
+        elif params and 'max_results' not in params:
+            params['max_results'] = 200
 
         try:
             # Get first page
@@ -294,7 +303,7 @@ class Backend(object):
             items = []
             while not last_page:
                 # Get elements ...
-                resp = self.method_get(endpoint, parameters)
+                resp = self.method_get(endpoint, params)
                 # Response contains:
                 # _items:
                 # ...
@@ -304,13 +313,13 @@ class Backend(object):
                 # - max_results, total, page
 
                 page_number = int(resp['_meta']['page'])
-                total = int(resp['_meta']['total'])
+                # total = int(resp['_meta']['total'])
                 max_results = int(resp['_meta']['max_results'])
 
                 if 'next' in resp['_links']:
                     # Go to next page ...
-                    parameters['page'] = page_number + 1
-                    parameters['max_results'] = max_results
+                    params['page'] = page_number + 1
+                    params['max_results'] = max_results
                 else:
                     last_page = True
                 items.extend(resp['_items'])
@@ -335,10 +344,15 @@ class Backend(object):
         :rtype: dict
         """
         if not self.token:
-            return {}
-        params = {'auth': HTTPBasicAuth(self.token, '')}
-        params['headers'] = headers
-        response = requests.post(endpoint, data_json, params)
+            log.error("Authentication required for deleting an object.")
+            raise BackendException(2001, "Access denied, please login before trying to post")
+
+        response = requests.post(
+            '/'.join([self.url_endpoint_root, endpoint]),
+            json=data_json,
+            headers=headers,
+            auth=HTTPBasicAuth(self.token, '')
+        )
         return response.json()
 
     def method_patch(self, endpoint, data_json, headers, stop_inception=False):
@@ -357,10 +371,15 @@ class Backend(object):
         :rtype: dict
         """
         if not self.token:
-            return {}
-        params = {'auth': HTTPBasicAuth(self.token, '')}
-        params['headers'] = headers
-        response = requests.patch(endpoint, data_json, params)
+            log.error("Authentication required for deleting an object.")
+            raise BackendException(3001, "Access denied, please login before trying to patch")
+
+        response = requests.patch(
+            '/'.join([self.url_endpoint_root, endpoint]),
+            json=data_json,
+            headers=headers,
+            auth=HTTPBasicAuth(self.token, '')
+        )
         if response.status_code == 200:
             return response.json()
         elif response.status_code == 412:
@@ -386,6 +405,10 @@ class Backend(object):
         :return: None
         """
         if not self.token:
-            return {}
-        params = {'auth': HTTPBasicAuth(self.token, '')}
-        requests.delete(endpoint, params)
+            log.error("Authentication required for deleting an object.")
+            raise BackendException(4001, "Access denied, please login before trying to delete")
+
+        requests.delete(
+            '/'.join([self.url_endpoint_root, endpoint]),
+            auth=HTTPBasicAuth(self.token, '')
+        )

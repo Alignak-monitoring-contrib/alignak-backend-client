@@ -38,7 +38,7 @@ def teardown_module(module):
 from alignakbackend_api_client.client import Backend, BackendException
 
 # extend the class unittest.TestCase
-class test_config(unittest.TestCase):
+class test_login_logout(unittest.TestCase):
 
     def test_1_creation(self):
         print ''
@@ -133,7 +133,10 @@ class test_config(unittest.TestCase):
         except Exception as e:
             print 'exception:', str(e)
 
-    def test_5_domains_and_some_elements(self):
+# extend the class unittest.TestCase
+class test_get(unittest.TestCase):
+
+    def test_1_domains_and_some_elements(self):
         print ''
         print 'get all domains and some elements'
         try:
@@ -201,7 +204,7 @@ class test_config(unittest.TestCase):
         except Exception as e:
             print 'exception:', str(e)
 
-    def test_6_all_pages(self):
+    def test_2_all_pages(self):
         print ''
         print 'get all elements on an endpoint'
         try:
@@ -242,7 +245,7 @@ class test_config(unittest.TestCase):
         except Exception as e:
             print 'exception:', str(e)
 
-    def test_6_page_after_page(self):
+    def test_3_page_after_page(self):
         print ''
         print 'backend connection with username/password'
 
@@ -326,6 +329,77 @@ class test_config(unittest.TestCase):
                 ok_('host_name' in item)
                 ok_('service_description' in item)
                 print "Service: %s/%s" % (item['host_name'], item['service_description'])
+        except BackendException as e:
+            print 'exception:', str(e)
+            ok_(False)
+        except Exception as e:
+            print 'exception:', str(e)
+
+# extend the class unittest.TestCase
+class test_update(unittest.TestCase):
+
+    def test_1_domains_and_some_elements(self):
+        print ''
+        print 'get all domains and some elements'
+        try:
+            # Create client API
+            backend = Backend("http://localhost:5000")
+
+            print 'Login ...'
+            print 'authenticated:', backend.authenticated
+            result = backend.login('admin', 'admin')
+            print 'authenticated:', backend.authenticated
+            print 'token:', backend.token
+            ok_(backend.authenticated == True)
+
+            # Get all available endpoints
+            print 'get all domains'
+            # Filter the templates ...
+            items = backend.get_domains()
+            print "Got %d elements:" % len(items)
+            ok_('_items' not in items)
+            ok_(len(items) > 0)
+            for item in items:
+                ok_('href' in item)
+                ok_('title' in item)
+                print "Domain: ", item
+
+            # Get all hosts
+            print 'get all hosts at once'
+            # Filter the templates ...
+            parameters = { 'where': '{"register":true}' }
+            items = backend.method_get_all('host', parameters=parameters)
+            print "Got %d elements:" % len(items)
+            ok_('_items' not in items)
+            ok_(len(items) > 0)
+            for item in items:
+                ok_('host_name' in item)
+                print "Host: ", item['host_name']
+
+            # Get all services
+            print 'get all services at once'
+            # Filter the templates ...
+            parameters = { 'where': '{"register":true}' }
+            items = backend.method_get_all('service', parameters=parameters)
+            print "Got %d elements:" % len(items)
+            ok_('_items' not in items)
+            # ok_(len(items) > 0)
+            for item in items:
+                ok_('host_name' in item)
+                ok_('service_description' in item)
+                print "Service: %s/%s" % (item['host_name'], item['service_description'])
+
+            # Get all contacts
+            print 'get all contacts at once'
+            # Filter the templates ...
+            parameters = { 'where': '{"register":true}' }
+            items = backend.method_get_all('contact', parameters=parameters)
+            print "Got %d elements:" % len(items)
+            ok_('_items' not in items)
+            ok_(len(items) > 0)
+            for item in items:
+                ok_('contact_name' in item)
+                print "Contact: ", item['contact_name']
         except BackendException as e:
             print 'exception:', str(e)
             ok_(False)
