@@ -21,22 +21,50 @@
 """
 This module is a wrapper to get, post, patch, delete in alignak-backend
 """
+import traceback
+import logging
+
+import json
 import requests
+from requests import Timeout
 from requests.auth import HTTPBasicAuth
+
+log = logging.getLogger(__name__)
+
+
+class BackendException(Exception):
+    """Specific backend exception"""
+    def __init__(self, code, message):
+        # Call the base class constructor with the parameters it needs
+        super(BackendException, self).__init__(message)
+        self.code = code
+        self.message = message
+
+    def __str__(self):
+        """Exception to String"""
+        return "Backend error code %d: %s" % (self.code, self.message)
 
 
 class Backend(object):
     """
     Backend class to communicate with alignak-backend
     """
-    token = None
+    def __init__(self, endpoint):
+        """
+        Alignak backend
 
-    def login(self, endpoint, username, password, generate='enabled'):
+        :param endpoint: root endpoint (API URL)
+        :type endpoint: str
+        """
+        self.connected = False
+        self.authenticated = False
+        self.url_endpoint_root = endpoint
+        self.token = None
+
+    def login(self, username, password, generate='enabled'):
         """
         Log into the backend and get the token
 
-        :param endpoint: endpoint (url) of backend
-        :type endpoint: str
         :param username: login name
         :type username: str
         :param password: password
@@ -46,23 +74,75 @@ class Backend(object):
         :return: return True if authentication is successfull, otherwise False
         :rtype: bool
         """
-        params = {'username': username, 'password': password}
-        if generate == 'force':
-            params['action'] = 'generate'
+        log.info(
+            "request backend authentication for: %s, generate: %s",
+            username, generate
+        )
 
-        response = requests.post(endpoint + '/login', json=params)
+        if not username or not password:
+            raise BackendException(1001, "Missing mandatory parameters")
+
+        self.authenticated = False
+        self.token = None
+
+        try:
+            headers = {'Content-Type': 'application/json'}
+            params = {'username': username, 'password': password}
+            if generate == 'force':
+                params['action'] = 'generate'
+
+            response = requests.post(
+                ''.join([self.url_endpoint_root, 'login']),
+                json=params,
+                headers=headers
+            )
+            response.raise_for_status()
+        except Timeout as e:
+            log.error("Backend connection timeout, error: %s", str(e))
+            raise BackendException(1002, "Backend connection timeout")
+        except Exception as e:
+            log.error("Backend connection exception, error: %s / %s", type(e), str(e))
+            raise BackendException(1003, "Backend connection exception")
+
         resp = response.json()
-        if 'token' in resp:
-            self.token = resp['token']
-            return True
-        elif generate == 'force':
-            return False
-        elif generate == 'disabled':
-            return False
-        elif generate == 'enabled':
-            return self.login(endpoint, username, password, 'force')
-        return False
+        log.info(
+            "authentication response: %s",
+            resp
+        )
 
+        if '_status' in resp:
+            # Considering an information is returned if a _status field is present ...
+            log.warning("backend status: %s", resp['_status'])
+
+        if '_error' in resp:
+            # Considering a problem occured is an _error field is present ...
+            error = resp['_error']
+            log.error(
+                "authentication, error: %s, %s",
+                error['code'], error['message']
+            )
+
+            raise BackendException(error['code'], error['message'])
+
+        else:
+            if 'token' not in resp:  # pragma: no cover
+                log.error("User authentication failed")
+                raise BackendException(1003, "User authentication failed")
+
+            if 'token' in resp:
+                self.token = resp['token']
+                self.authenticated = True
+                log.info(
+                    "user authenticated: %s, token: %s", username, self.token
+                )
+                return True
+            elif generate == 'force':
+                return False
+            elif generate == 'disabled':
+                return False
+            elif generate == 'enabled':
+                return self.login(username, password, 'force')
+            return False
 
     def method_get(self, endpoint, allpages=True):
         """
@@ -75,7 +155,7 @@ class Backend(object):
         :return: list of properties when query item | list of items when get many items
         :rtype: list
         """
-        if self.token == None:
+        if not self.token:
             return {}
         params = {'auth': HTTPBasicAuth(self.token, '')}
         response = requests.get(endpoint, params)
@@ -115,7 +195,7 @@ class Backend(object):
         :return: response (creation information)
         :rtype: dict
         """
-        if self.token == None:
+        if not self.token:
             return {}
         params = {'auth': HTTPBasicAuth(self.token, '')}
         params['headers'] = headers
@@ -137,7 +217,7 @@ class Backend(object):
         :return: dictionary with response of update fields
         :rtype: dict
         """
-        if self.token == None:
+        if not self.token:
             return {}
         params = {'auth': HTTPBasicAuth(self.token, '')}
         params['headers'] = headers
@@ -166,7 +246,7 @@ class Backend(object):
         :type endpoint: str
         :return: None
         """
-        if self.token == None:
+        if not self.token:
             return {}
         params = {'auth': HTTPBasicAuth(self.token, '')}
         requests.delete(endpoint, params)
