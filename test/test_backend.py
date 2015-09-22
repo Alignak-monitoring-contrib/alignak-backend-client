@@ -37,16 +37,20 @@ def teardown_module(module):
 import alignak_backend_client
 from alignak_backend_client.client import Backend, BackendException
 
+backend_address = "http://alignak-backend-test.siprossii.com:80"
+# backend_address = "http://localhost:5000"
+
 # extend the class unittest.TestCase
 class test_0_login_logout(unittest.TestCase):
 
     def test_01_creation(self):
-        import alignak_backend_client
+        global backend_address
+
         print ''
         print 'test creation'
 
-        print 'Create client API'
-        backend = Backend("http://localhost:5000")
+        print 'Create client API for URL:', backend_address
+        backend = Backend(backend_address)
 
         print 'object:', backend
         print 'authenticated:', backend.authenticated
@@ -54,11 +58,11 @@ class test_0_login_logout(unittest.TestCase):
         print 'token:', backend.token
         assert_false(backend.connected)
         assert_false(backend.authenticated)
-        assert_true(backend.url_endpoint_root == "http://localhost:5000")
+        assert_true(backend.url_endpoint_root == backend_address)
         assert_true(backend.token == None)
 
         print 'Create client API (trailing slash is removed)'
-        backend = Backend("http://localhost:5000/")
+        backend = Backend(backend_address)
 
         print 'object:', backend
         print 'authenticated:', backend.authenticated
@@ -66,10 +70,12 @@ class test_0_login_logout(unittest.TestCase):
         print 'token:', backend.token
         assert_false(backend.connected)
         assert_false(backend.authenticated)
-        assert_true(backend.url_endpoint_root == "http://localhost:5000")
+        assert_true(backend.url_endpoint_root == backend_address)
         assert_true(backend.token == None)
 
     def test_02_refused_connection_username(self):
+        global backend_address
+
         print ''
         print 'test refused connection with username/password'
 
@@ -89,11 +95,13 @@ class test_0_login_logout(unittest.TestCase):
         assert_false(backend.authenticated)
 
     def test_03_token_generate(self):
+        global backend_address
+
         print ''
         print 'force authentication token generation'
 
         # Create client API
-        backend = Backend("http://localhost:5000")
+        backend = Backend(backend_address)
 
         print 'request new token generation'
         result = backend.login('admin', 'admin', 'force')
@@ -109,11 +117,13 @@ class test_0_login_logout(unittest.TestCase):
         assert_true(token1 != token2)
 
     def test_04_connection_username(self):
+        global backend_address
+
         print ''
         print 'test accepted connection with username/password'
 
         # Create client API
-        backend = Backend("http://localhost:5000")
+        backend = Backend(backend_address)
 
         print 'Login ...'
         result = backend.login('admin', 'admin')
@@ -149,28 +159,47 @@ class test_0_login_logout(unittest.TestCase):
         print 'get object ... must be refused!'
         with assert_raises(BackendException) as cm:
             items = backend.get('host')
-        ex = cm.exception # raised exception is available through exception property of context
+        ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1001, str(ex))
 
         print 'get_all object ... must be refused!'
         with assert_raises(BackendException) as cm:
             items = backend.get_all('host')
-        ex = cm.exception # raised exception is available through exception property of context
+        ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1001, str(ex))
 
         print 'get all domains ... must be refused!'
         with assert_raises(BackendException) as cm:
             items = backend.get_domains()
-        ex = cm.exception # raised exception is available through exception property of context
+        ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1001, str(ex))
 
         print 'post data ... must be refused!'
         with assert_raises(BackendException) as cm:
             data = { 'fake': 'fake' }
-            response = backend.method_post('contact', data=data)
+            response = backend.post('contact', data=data)
+        ex = cm.exception
+        print 'exception:', str(ex.code)
+        assert_true(ex.code == 1001, str(ex))
+
+        print 'patch data ... must be refused!'
+        with assert_raises(BackendException) as cm:
+            data = { 'fake': 'fake' }
+            headers = { 'If-Match': '' }
+            response = backend.patch('contact', data=data, headers=headers)
+        ex = cm.exception
+        print 'exception:', str(ex.code)
+        assert_true(ex.code == 1001, str(ex))
+
+        print 'delete data ... must be refused!'
+        with assert_raises(BackendException) as cm:
+            data = { 'fake': 'fake' }
+            headers = { 'If-Match': '' }
+            response = backend.delete('contact', headers=headers)
+        ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1001, str(ex))
 
@@ -179,11 +208,13 @@ class test_0_login_logout(unittest.TestCase):
 class test_1_get(unittest.TestCase):
 
     def test_11_domains_and_some_elements(self):
+        global backend_address
+
         print ''
         print 'get all domains and some elements'
 
         # Create client API
-        backend = Backend("http://localhost:5000")
+        backend = Backend(backend_address)
 
         print 'Login ...'
         print 'authenticated:', backend.authenticated
@@ -207,11 +238,11 @@ class test_1_get(unittest.TestCase):
         # Get all hosts
         print 'get all hosts at once'
         # Filter the templates ...
-        parameters = { 'where': '{"register":true}' }
+        parameters = { 'where': '{"register":true}', 'max_results': 1 }
         items = backend.get_all('host', params=parameters)
         print "Got %d elements:" % len(items)
         assert_true('_items' not in items)
-        assert_true(len(items) > 0)
+        # assert_true(len(items) > 0)
         for item in items:
             assert_true('host_name' in item)
             print "Host: ", item['host_name']
@@ -236,17 +267,19 @@ class test_1_get(unittest.TestCase):
         items = backend.get_all('contact', params=parameters)
         print "Got %d elements:" % len(items)
         assert_true('_items' not in items)
-        assert_true(len(items) > 0)
+        # assert_true(len(items) > 0)
         for item in items:
             assert_true('contact_name' in item)
             print "Contact: ", item['contact_name']
 
     def test_12_all_pages(self):
+        global backend_address
+
         print ''
         print 'get all elements on an endpoint'
 
         # Create client API
-        backend = Backend("http://localhost:5000")
+        backend = Backend(backend_address)
 
         print 'Login ...'
         print 'authenticated:', backend.authenticated
@@ -277,6 +310,29 @@ class test_1_get(unittest.TestCase):
                 assert_true('_etag' in item)
                 print "etag: ", item['_etag']
 
+        # Get all available endpoints
+        print 'get all domains'
+        # Filter the templates ...
+        items = backend.get_domains()
+        print "Got %d elements:" % len(items)
+        assert_true('_items' not in items)
+        assert_true(len(items) > 0)
+        for item in items:
+            assert_true('href' in item)
+            assert_true('title' in item)
+            print "Domain: ", item
+
+            # Get all elements
+            print 'get all %s at once' % item['href']
+            params = {'max_results': 2}
+            items = backend.get_all(item['href'], params=params)
+            print "Got %d elements:" % len(items)
+            assert_true('_items' not in items)
+            # assert_true(len(items) > 0)
+            for item in items:
+                assert_true('_etag' in item)
+                print "etag: ", item['_etag']
+
         # Get all hosts
         print 'get all hosts at once, 1 item per page'
         params = {'max_results':1}
@@ -287,13 +343,16 @@ class test_1_get(unittest.TestCase):
         for item in items:
             assert_true('_etag' in item)
             print "etag: ", item['_etag']
+
     def test_13_page_after_page(self):
+        global backend_address
+
         print ''
         print 'backend connection with username/password'
 
 
         # Create client API
-        backend = Backend("http://localhost:5000")
+        backend = Backend(backend_address)
 
         print 'Login ...'
         print 'authenticated:', backend.authenticated
@@ -376,11 +435,13 @@ class test_1_get(unittest.TestCase):
 class test_2_update(unittest.TestCase):
 
     def test_21_post(self):
+        global backend_address
+
         print ''
         print 'post some elements'
 
         # Create client API
-        backend = Backend("http://localhost:5000")
+        backend = Backend(backend_address)
 
         print 'Login ...'
         print 'authenticated:', backend.authenticated
@@ -391,7 +452,6 @@ class test_2_update(unittest.TestCase):
 
         # Get all contacts
         print 'get all contacts at once'
-        # Filter the templates ...
         parameters = { 'where': '{"register":true}' }
         items = backend.get_all('contact', params=parameters)
         print "Got %d elements:" % len(items)
@@ -404,12 +464,11 @@ class test_2_update(unittest.TestCase):
             # Test contact still exists ... delete him!
             if item['contact_name'] == 'test':
                 headers = { 'If-Match': item['_etag'] }
-                response = backend.method_delete('/'.join(['contact', item['_id']]), headers)
+                response = backend.delete('/'.join(['contact', item['_id']]), headers)
                 print "Response:", response
 
         # Get all timeperiods
         print 'get all timeperiods at once'
-        # Filter the templates ...
         parameters = { 'where': '{"register":true}' }
         items = backend.get_all('timeperiod', params=parameters)
         print "Got %d elements:" % len(items)
@@ -419,7 +478,45 @@ class test_2_update(unittest.TestCase):
             assert_true('timeperiod_name' in item)
             assert_true('_id' in item)
             tp_id = item['_id']
+            print item
             print "TP: %s (%s), id=%s" % (item['timeperiod_name'], item['name'], item['_id'])
+
+        if not tp_id:
+            # Create a new timeperiod
+            print 'create a timeperiod'
+            data = {
+                "timeperiod_name": "test",
+                "name": "Testing TP",
+                "alias": "Test TP",
+                "dateranges": [
+                    {u'monday': u'09:00-17:00'},
+                    {u'tuesday': u'09:00-17:00'},
+                    {u'wednesday': u'09:00-17:00'},
+                    {u'thursday': u'09:00-17:00'},
+                    {u'friday': u'09:00-17:00'}
+                ],
+                "register": True
+            }
+            response = backend.post('timeperiod', data=data)
+            print "Response:", response
+            assert_true('_created' in response)
+            assert_true('_updated' in response)
+            assert_true(response['_created'] == response['_updated'])
+
+            # Get all timeperiods
+            print 'get all timeperiods at once'
+            parameters = { 'where': '{"register":true}' }
+            items = backend.get_all('timeperiod', params=parameters)
+            print "Got %d elements:" % len(items)
+            assert_true('_items' not in items)
+            tp_id = ''
+            for item in items:
+                assert_true('timeperiod_name' in item)
+                assert_true('_id' in item)
+                tp_id = item['_id']
+                print "TP: %s (%s), id=%s" % (item['timeperiod_name'], item['name'], item['_id'])
+
+        assert_true(tp_id != '')
 
         # Create a new contact
         print 'create a contact'
@@ -469,7 +566,7 @@ class test_2_update(unittest.TestCase):
             "notificationways": [],
             "register": True
         }
-        response = backend.method_post('contact', data=data)
+        response = backend.post('contact', data=data)
         print "Response:", response
         assert_true('_created' in response)
         assert_true('_updated' in response)
@@ -483,6 +580,75 @@ class test_2_update(unittest.TestCase):
         print "Got %d elements:" % len(items)
         assert_true('_items' not in items)
         assert_true(len(items) > 0)
+        contact_id = ''
+        contact_etag = ''
         for item in items:
             assert_true('contact_name' in item)
             print "Contact: ", item['contact_name']
+            if item['contact_name'] == 'test':
+                contact_id = item['_id']
+                contact_etag = item['_etag']
+        assert_true(contact_id != '')
+        assert_true(contact_etag != '')
+
+        print 'changing contact alias ... no _etag'
+        print 'id:', contact_id
+        print 'etag:', contact_etag
+        with assert_raises(BackendException) as cm:
+            data = {'alias': 'modified test again and again'}
+            # headers['If-Match'] = contact_etag
+            response = backend.patch('/'.join(['contact', contact_id]), data=data)
+        ex = cm.exception
+        print 'exception:', str(ex.code)
+        assert_true(ex.code == 1005, str(ex))
+
+        print 'changing contact alias ...'
+        print 'id:', contact_id
+        print 'etag:', contact_etag
+        data = {'alias': 'modified test'}
+        headers = {'If-Match': contact_etag}
+        response = backend.patch('/'.join(['contact', contact_id]), data=data, headers=headers)
+        print 'response:', response
+        assert_true(response['_status'] == 'OK')
+
+        response = backend.get('/'.join(['contact', contact_id]))
+        print 'response:', response
+        assert_true(response['alias'] == 'modified test')
+
+        print 'changing contact alias ... bad _etag (inception = True)'
+        print 'id:', contact_id
+        print 'etag:', contact_etag
+        data = {'alias': 'modified test again'}
+        headers = {'If-Match': contact_etag}
+        response = backend.patch('/'.join(['contact', contact_id]), data=data, headers=headers, inception=True)
+        print 'response:', response
+        assert_true(response['_status'] == 'OK')
+
+        response = backend.get('/'.join(['contact', contact_id]))
+        print 'response:', response
+        assert_true(response['alias'] == 'modified test again')
+
+        print 'changing contact alias ... bad _etag (inception = False)'
+        print 'id:', contact_id
+        print 'etag:', contact_etag
+        with assert_raises(BackendException) as cm:
+            data = {'alias': 'modified test again and again'}
+            headers = {'If-Match': contact_etag}
+            response = backend.patch('/'.join(['contact', contact_id]), data=data, headers=headers)
+        ex = cm.exception
+        print 'exception:', str(ex.code)
+        assert_true(ex.code == 412, str(ex))
+
+        response = backend.get('/'.join(['contact', contact_id]))
+        print 'response:', response
+        # Not changed !
+        assert_true(response['alias'] == 'modified test again')
+
+        print 'deleting contact ... bad href'
+        with assert_raises(BackendException) as cm:
+            headers = { 'If-Match': item['_etag'] }
+            response = backend.delete('/'.join(['contact', '5'+item['_id']]), headers)
+            print "Response:", response
+        ex = cm.exception
+        print 'exception:', str(ex.code)
+        assert_true(ex.code == 1003, str(ex))

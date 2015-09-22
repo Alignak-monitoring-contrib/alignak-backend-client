@@ -33,7 +33,15 @@ log = logging.getLogger(__name__)
 
 
 class BackendException(Exception):
-    """Specific backend exception"""
+    """Specific backend exception
+    Defined error codes:
+    - 1000: general exception, message contains more information
+    - 1001: backend access denied
+    - 1002: backend connection timeout
+    - 1003: backend uncatched HTTPError
+    - 1004: backend token not provided on login, user is not yet authorized to log in
+    - 1005: If-Match header is required for patching an object
+    """
     def __init__(self, code, message, response=None):
         # Call the base class constructor with the parameters it needs
         super(BackendException, self).__init__(message)
@@ -196,8 +204,6 @@ class Backend(object):
         """
         Connect to alignak backend and retrieve all available child endpoints of root
 
-        TODO: rewrite to use self.get method ...
-
         If connection is successfull, returns a list of all the resources available in the backend:
         Each resource is identified with its title and provides its endpoint relative to backend
         root endpoint.
@@ -220,35 +226,14 @@ class Backend(object):
 
         log.info("trying to get domains from backend: %s", self.url_endpoint_root)
 
-        try:
-            response = requests.get(
-                self.url_endpoint_root,
-                auth=HTTPBasicAuth(self.token, '')
-            )
-            resp = response.json()
-            if '_status' in resp:  # pragma: no cover - need specific backend tests
-                # Considering an information is returned if a _status field is present ...
-                log.warning("backend status: %s", resp['_status'])
+        resp = self.get('')
+        log.debug("received data: %s", resp)
+        if "_links" in resp:
+            _links = resp["_links"]
+            if "child" in _links:
+                return _links["child"]
 
-            if '_error' in resp:  # pragma: no cover - need specific backend tests
-                # Considering a problem occured is an _error field is present ...
-                error = resp['_error']
-                log.error(
-                    "backend not available, error: %s, %s",
-                    error['code'], error['message']
-                )
-
-                raise BackendException(error['code'], error['message'])
-            else:
-                log.debug("received data: %s", resp)
-                if "_links" in resp:
-                    _links = resp["_links"]
-                    if "child" in _links:
-                        return _links["child"]
-        except Exception as e:  # pragma: no cover - need specific backend tests
-            raise e
-
-        return resp  # pragma: no cover - need specific backend tests
+        return {}  # pragma: no cover - should never occur!
 
     def get(self, endpoint, params=None):
         """
@@ -333,7 +318,6 @@ class Backend(object):
             # - max_results, total, page
 
             page_number = int(resp['_meta']['page'])
-            # total = int(resp['_meta']['total'])
             max_results = int(resp['_meta']['max_results'])
 
             if 'next' in resp['_links']:
@@ -346,7 +330,7 @@ class Backend(object):
 
         return items
 
-    def method_post(self, endpoint, data, headers=None):
+    def post(self, endpoint, data, headers=None):
         """
         Create a new item
 
@@ -380,15 +364,15 @@ class Backend(object):
         if '_error' in resp:  # pragma: no cover - need specific backend tests
             # Considering a problem occured is an _error field is present ...
             error = resp['_error']
-            log.error(
-                "backend error: %s, %s",
-                error['code'], error['message']
-            )
+            log.error("backend error: %s, %s", error['code'], error['message'])
+            if '_issues' in resp:
+                for issue in resp['_issues']:
+                    log.error(" - issue: %s: %s", issue, resp['_issues'][issue])
             raise BackendException(error['code'], error['message'], resp)
 
         return resp
 
-    def method_patch(self, endpoint, data, headers=None, stop_inception=False):
+    def patch(self, endpoint, data, headers=None, inception=False):
         """
         Method to update an item
 
@@ -398,8 +382,8 @@ class Backend(object):
         :type data:str
         :param headers: headers (example: Content-Type). 'If-Match' required
         :type headers: dict
-        :param stop_inception: if false try to get the right etag
-        :type stop_inception: bool
+        :param inception: if True tries to get the last _etag
+        :type inception: bool
         :return: dictionary with response of update fields
         :rtype: dict
         """
@@ -408,7 +392,8 @@ class Backend(object):
             raise BackendException(1001, "Access denied, please login before trying to patch")
 
         if not headers:
-            headers = {'Content-Type': 'application/json'}
+            log.error("Header If-Match required for patching an object.")
+            raise BackendException(1005, "Header If-Match required for patching an object")
 
         response = requests.patch(
             '/'.join([self.url_endpoint_root, endpoint]),
@@ -420,22 +405,21 @@ class Backend(object):
             return response.json()
         elif response.status_code == 412:
             # 412 means Precondition failed
-            # print(response.content)
             if 'Client and server etags don' in response.content:
                 # update etag + retry
-                if stop_inception:
-                    return '{}'
-                resp = self.get('/'.join([self.url_endpoint_root, endpoint]))
-                headers['If-Match'] = resp['_etag']
-                return self.method_patch(
-                    '/'.join([self.url_endpoint_root, endpoint]),
-                    json, headers, True
-                )
-        else:
-            # print("%s: %s for %s" % (response.status_code, response.content, endpoint))
+                if inception:
+                    resp = self.get(endpoint)
+                    headers['If-Match'] = resp['_etag']
+                    return self.patch(
+                        endpoint,
+                        data=data, headers=headers, inception=False
+                    )
+                else:
+                    raise BackendException(412, response.content)
+        else:  # pragma: no cover - should never occur
             return response.json()
 
-    def method_delete(self, endpoint, headers):
+    def delete(self, endpoint, headers):
         """
         Method to delete an item or all items
 
@@ -452,26 +436,22 @@ class Backend(object):
             log.error("Authentication required for deleting an object.")
             raise BackendException(1001, "Access denied, please login before trying to delete")
 
-        response = requests.delete(
-            '/'.join([self.url_endpoint_root, endpoint]),
-            headers=headers,
-            auth=HTTPBasicAuth(self.token, '')
-        )
-        if response.status_code == 204:
-            return {}
-
-        resp = response.json()
-        if '_status' in resp:  # pragma: no cover - need specific backend tests
-            # Considering an information is returned if a _status field is present ...
-            log.warning("backend status: %s", resp['_status'])
-
-        if '_error' in resp:  # pragma: no cover - need specific backend tests
-            # Considering a problem occured is an _error field is present ...
-            error = resp['_error']
-            log.error(
-                "backend error: %s, %s",
-                error['code'], error['message']
+        try:
+            response = requests.delete(
+                '/'.join([self.url_endpoint_root, endpoint]),
+                headers=headers,
+                auth=HTTPBasicAuth(self.token, '')
             )
-            raise BackendException(error['code'], error['message'], resp)
+            if response.status_code != 204:
+                response.raise_for_status()
+        except Timeout as e:  # pragma: no cover - need specific backend tests
+            log.error("Backend connection timeout, error: %s", str(e))
+            raise BackendException(1002, "Backend connection timeout")
+        except HTTPError as e:  # pragma: no cover - need specific backend tests
+            log.error("Backend HTTP error, error: %s", str(e))
+            raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
+        except Exception as e:  # pragma: no cover - security ...
+            log.error("Backend connection exception, error: %s / %s", type(e), str(e))
+            raise BackendException(1000, "Backend exception: %s / %s" % (type(e), str(e)))
 
-        return resp
+        return {}
