@@ -1,6 +1,20 @@
 CHANGES
 =======
 
+* Added Coveralls badge in readme file
+* Temporarily disable Python 2.6 and 3.4 !
+* One more time ... trying to fix Travis fail!
+* Finished tests - online backend for Travis build
+* Improved test coverage
+* Update README.md
+* Still some testings to fix coverage errors ..
+* Try to fix coverage error
+* Appended to previous commit
+* Rename package to alignak_backend_client
+* Renaming repo
+* Cleaning and improvements
+* Improvements and more tests (intensive GET testings)
+* Daily commit ... not yet finished all modifications
 * Manage auth / token
 * Add auth basic management
 * Add argument to have possibility to get only the first page on get method
