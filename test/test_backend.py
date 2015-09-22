@@ -35,7 +35,7 @@ def teardown_module(module):
     print ("teardown_module after everything in this file")
 
 
-from alignak_backend_api_client.client import Backend, BackendException
+from alignak_backend_client.client import Backend, BackendException
 
 # extend the class unittest.TestCase
 class test_login_logout(unittest.TestCase):
