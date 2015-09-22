@@ -34,7 +34,7 @@ def teardown_module(module):
     print ("") # this is to get a newline after the dots
     print ("teardown_module after everything in this file")
 
-
+# import alignak_backend_client
 from alignak_backend_client.client import Backend, BackendException
 
 # extend the class unittest.TestCase
