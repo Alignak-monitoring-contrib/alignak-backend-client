@@ -1,9 +1,9 @@
 language: python
 sudo: true
 python:
-  - "2.6"
+  # - "2.6"
   - "2.7"
-  - "3.4"
+  # - "3.4"
 
 # command to install dependencies
 # some are only used for travis/coveralls so we are installing them here only
