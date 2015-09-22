@@ -81,7 +81,7 @@ class test_0_login_logout(unittest.TestCase):
             result = backend.login(None, None)
         ex = cm.exception # raised exception is available through exception property of context
         print 'exception:', str(ex.code)
-        assert_true(ex.code == 1001)
+        assert_true(ex.code == 1001, str(ex))
         print 'authenticated:', backend.authenticated
 
         print "invalid username/password, login refused - returns false"
@@ -146,19 +146,33 @@ class test_0_login_logout(unittest.TestCase):
         print 'token:', backend.token
         assert_false(backend.authenticated)
 
+        print 'get object ... must be refused!'
+        with assert_raises(BackendException) as cm:
+            items = backend.get('host')
+        ex = cm.exception # raised exception is available through exception property of context
+        print 'exception:', str(ex.code)
+        assert_true(ex.code == 1001, str(ex))
+
+        print 'get_all object ... must be refused!'
+        with assert_raises(BackendException) as cm:
+            items = backend.get_all('host')
+        ex = cm.exception # raised exception is available through exception property of context
+        print 'exception:', str(ex.code)
+        assert_true(ex.code == 1001, str(ex))
+
         print 'get all domains ... must be refused!'
         with assert_raises(BackendException) as cm:
             items = backend.get_domains()
         ex = cm.exception # raised exception is available through exception property of context
         print 'exception:', str(ex.code)
-        assert_true(ex.code == 1001)
+        assert_true(ex.code == 1001, str(ex))
 
         print 'post data ... must be refused!'
         with assert_raises(BackendException) as cm:
             data = { 'fake': 'fake' }
             response = backend.method_post('contact', data=data)
         print 'exception:', str(ex.code)
-        assert_true(ex.code == 1001)
+        assert_true(ex.code == 1001, str(ex))
 
 
 # extend the class unittest.TestCase
@@ -263,6 +277,16 @@ class test_1_get(unittest.TestCase):
                 assert_true('_etag' in item)
                 print "etag: ", item['_etag']
 
+        # Get all hosts
+        print 'get all hosts at once, 1 item per page'
+        params = {'max_results':1}
+        items = backend.get_all(item['href'], params=params)
+        print "Got %d elements:" % len(items)
+        assert_true('_items' not in items)
+        # assert_true(len(items) > 0)
+        for item in items:
+            assert_true('_etag' in item)
+            print "etag: ", item['_etag']
     def test_13_page_after_page(self):
         print ''
         print 'backend connection with username/password'

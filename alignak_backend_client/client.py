@@ -117,10 +117,10 @@ class Backend(object):
         except Timeout as e:  # pragma: no cover - need specific backend tests
             log.error("Backend connection timeout, error: %s", str(e))
             raise BackendException(1002, "Backend connection timeout")
-        except HTTPError as e:
+        except HTTPError as e:  # pragma: no cover - need specific backend tests
             log.error("Backend HTTP error, error: %s", str(e))
             raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
-        except Exception as e:
+        except Exception as e:  # pragma: no cover - security ...
             log.error("Backend connection exception, error: %s / %s", type(e), str(e))
             raise BackendException(1000, "Backend exception: %s / %s" % (type(e), str(e)))
 
@@ -156,7 +156,7 @@ class Backend(object):
                 log.debug("Token enabled, but none provided, require new token generation")
                 return self.login(username, password, 'force')
 
-            return False
+            return False  # pragma: no cover - unreachable ...
 
     def logout(self):
         """
@@ -180,10 +180,10 @@ class Backend(object):
         except Timeout as e:  # pragma: no cover - need specific backend tests
             log.error("Backend connection timeout, error: %s", str(e))
             raise BackendException(1002, "Backend connection timeout")
-        except HTTPError as e:
+        except HTTPError as e:  # pragma: no cover - need specific backend tests
             log.error("Backend HTTP error, error: %s", str(e))
             raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
-        except Exception as e:  # pragma: no cover - need specific backend tests
+        except Exception as e:  # pragma: no cover - security ...
             log.error("Backend connection exception, error: %s / %s", type(e), str(e))
             raise BackendException(1000, "Backend exception: %s / %s" % (type(e), str(e)))
 
@@ -377,7 +377,7 @@ class Backend(object):
             # Considering an information is returned if a _status field is present ...
             log.warning("backend status: %s", resp['_status'])
 
-        if '_error' in resp:
+        if '_error' in resp:  # pragma: no cover - need specific backend tests
             # Considering a problem occured is an _error field is present ...
             error = resp['_error']
             log.error(
@@ -461,11 +461,11 @@ class Backend(object):
             return {}
 
         resp = response.json()
-        if '_status' in resp:
+        if '_status' in resp:  # pragma: no cover - need specific backend tests
             # Considering an information is returned if a _status field is present ...
             log.warning("backend status: %s", resp['_status'])
 
-        if '_error' in resp:
+        if '_error' in resp:  # pragma: no cover - need specific backend tests
             # Considering a problem occured is an _error field is present ...
             error = resp['_error']
             log.error(
