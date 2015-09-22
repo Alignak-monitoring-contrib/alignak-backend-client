@@ -26,7 +26,7 @@ import logging
 
 import json
 import requests
-from requests import Timeout
+from requests import Timeout, HTTPError
 from requests.auth import HTTPBasicAuth
 
 log = logging.getLogger(__name__)
@@ -34,11 +34,12 @@ log = logging.getLogger(__name__)
 
 class BackendException(Exception):
     """Specific backend exception"""
-    def __init__(self, code, message):
+    def __init__(self, code, message, response=None):
         # Call the base class constructor with the parameters it needs
         super(BackendException, self).__init__(message)
         self.code = code
         self.message = message
+        self.response = response
 
     def __str__(self):
         """Exception to String"""
@@ -58,7 +59,10 @@ class Backend(object):
         """
         self.connected = False
         self.authenticated = False
-        self.url_endpoint_root = endpoint
+        if endpoint.endswith('/'):
+            self.url_endpoint_root = endpoint[0:-1]
+        else:
+            self.url_endpoint_root = endpoint
         self.token = None
 
     def login(self, username, password, generate='enabled'):
@@ -69,6 +73,12 @@ class Backend(object):
         - enabled: require current token (default)
         - force: force new token generation
         - disabled
+
+        if login is:
+        - accepted, returns True
+        - refused, returns False
+
+        In case of any error, raises a BackendException
 
         :param username: login name
         :type username: str
@@ -101,22 +111,27 @@ class Backend(object):
                 json=params,
                 headers=headers
             )
+            if response.status_code == 401:
+                return False
             response.raise_for_status()
-        except Timeout as e:
+        except Timeout as e:  # pragma: no cover - need specific backend tests
             log.error("Backend connection timeout, error: %s", str(e))
             raise BackendException(1002, "Backend connection timeout")
+        except HTTPError as e:
+            log.error("Backend HTTP error, error: %s", str(e))
+            raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
         except Exception as e:
             log.error("Backend connection exception, error: %s / %s", type(e), str(e))
-            raise BackendException(1003, "Backend connection exception")
+            raise BackendException(1000, "Backend exception: %s / %s" % (type(e), str(e)))
 
         resp = response.json()
         log.info("authentication response: %s", resp)
 
-        if '_status' in resp:
+        if '_status' in resp:  # pragma: no cover - need specific backend tests
             # Considering an information is returned if a _status field is present ...
             log.warning("backend status: %s", resp['_status'])
 
-        if '_error' in resp:
+        if '_error' in resp:  # pragma: no cover - need specific backend tests
             # Considering a problem occured is an _error field is present ...
             error = resp['_error']
             log.error(
@@ -131,15 +146,16 @@ class Backend(object):
                 self.authenticated = True
                 log.info("user authenticated: %s, token: %s", username, self.token)
                 return True
-            elif generate == 'force':
+            elif generate == 'force':  # pragma: no cover - need specific backend tests
                 log.error("Token generation required but none provided.")
                 raise BackendException(1004, "Token not provided")
-            elif generate == 'disabled':
+            elif generate == 'disabled':  # pragma: no cover - need specific backend tests
                 log.error("Token disabled ... to be implemented!")
                 return False
-            elif generate == 'enabled':
+            elif generate == 'enabled':  # pragma: no cover - need specific backend tests
                 log.debug("Token enabled, but none provided, require new token generation")
                 return self.login(username, password, 'force')
+
             return False
 
     def logout(self):
@@ -161,12 +177,15 @@ class Backend(object):
                 auth=HTTPBasicAuth(self.token, '')
             )
             response.raise_for_status()
-        except Timeout as e:
+        except Timeout as e:  # pragma: no cover - need specific backend tests
             log.error("Backend connection timeout, error: %s", str(e))
             raise BackendException(1002, "Backend connection timeout")
-        except Exception as e:
+        except HTTPError as e:
+            log.error("Backend HTTP error, error: %s", str(e))
+            raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
+        except Exception as e:  # pragma: no cover - need specific backend tests
             log.error("Backend connection exception, error: %s / %s", type(e), str(e))
-            raise BackendException(1003, "Backend connection exception")
+            raise BackendException(1000, "Backend exception: %s / %s" % (type(e), str(e)))
 
         self.authenticated = False
         self.token = None
@@ -176,6 +195,8 @@ class Backend(object):
     def get_domains(self):
         """
         Connect to alignak backend and retrieve all available child endpoints of root
+
+        TODO: rewrite to use self.get method ...
 
         If connection is successfull, returns a list of all the resources available in the backend:
         Each resource is identified with its title and provides its endpoint relative to backend
@@ -229,7 +250,7 @@ class Backend(object):
 
         return resp  # pragma: no cover - need specific backend tests
 
-    def method_get(self, endpoint, params=None):
+    def get(self, endpoint, params=None):
         """
         Get items or item in alignak backend
 
@@ -246,7 +267,7 @@ class Backend(object):
             log.error("Authentication required for getting an object.")
             raise BackendException(1001, "Access denied, please login before trying to get")
 
-        log.info("method_get, endpoint: %s, parameters: %s", endpoint, params)
+        log.info("get, endpoint: %s, parameters: %s", endpoint, params)
 
         response = requests.get(
             '/'.join([self.url_endpoint_root, endpoint]),
@@ -269,7 +290,7 @@ class Backend(object):
 
         return resp
 
-    def method_get_all(self, endpoint, params=None):
+    def get_all(self, endpoint, params=None):
         """
         Get all items in the specified endpoint of alignak backend
 
@@ -289,7 +310,7 @@ class Backend(object):
             log.error("Authentication required for getting an object.")
             raise BackendException(1001, "Access denied, please login before trying to get")
 
-        log.info("method_get_all, endpoint: %s, parameters: %s", endpoint, params)
+        log.info("get_all, endpoint: %s, parameters: %s", endpoint, params)
 
         # Set max results at maximum value supported by the backend to limit requests number
         if not params:
@@ -297,47 +318,42 @@ class Backend(object):
         elif params and 'max_results' not in params:
             params['max_results'] = 200
 
-        try:
-            # Get first page
-            last_page = False
-            items = []
-            while not last_page:
-                # Get elements ...
-                resp = self.method_get(endpoint, params)
-                # Response contains:
-                # _items:
-                # ...
-                # _links:
-                #  self, parent, prev, last, next
-                # _meta:
-                # - max_results, total, page
+        # Get first page
+        last_page = False
+        items = []
+        while not last_page:
+            # Get elements ...
+            resp = self.get(endpoint, params)
+            # Response contains:
+            # _items:
+            # ...
+            # _links:
+            #  self, parent, prev, last, next
+            # _meta:
+            # - max_results, total, page
 
-                page_number = int(resp['_meta']['page'])
-                # total = int(resp['_meta']['total'])
-                max_results = int(resp['_meta']['max_results'])
+            page_number = int(resp['_meta']['page'])
+            # total = int(resp['_meta']['total'])
+            max_results = int(resp['_meta']['max_results'])
 
-                if 'next' in resp['_links']:
-                    # Go to next page ...
-                    params['page'] = page_number + 1
-                    params['max_results'] = max_results
-                else:
-                    last_page = True
-                items.extend(resp['_items'])
+            if 'next' in resp['_links']:
+                # Go to next page ...
+                params['page'] = page_number + 1
+                params['max_results'] = max_results
+            else:
+                last_page = True
+            items.extend(resp['_items'])
 
-            return items
-        except Exception as e:  # pragma: no cover - need specific backend tests
-            raise e
+        return items
 
-        return []
-
-    def method_post(self, endpoint, data_json, headers):
+    def method_post(self, endpoint, data, headers=None):
         """
         Create a new item
 
         :param endpoint: endpoint (API URL)
         :type endpoint: str
-        :param data_json: properties of item to create
-        :type data_json:str
+        :param data: properties of item to create
+        :type data:str
         :param headers: headers (example: Content-Type)
         :type headers: dict
         :return: response (creation information)
@@ -345,24 +361,41 @@ class Backend(object):
         """
         if not self.token:
             log.error("Authentication required for deleting an object.")
-            raise BackendException(2001, "Access denied, please login before trying to post")
+            raise BackendException(1001, "Access denied, please login before trying to post")
+
+        if not headers:
+            headers = {'Content-Type': 'application/json'}
 
         response = requests.post(
             '/'.join([self.url_endpoint_root, endpoint]),
-            json=data_json,
+            json=data,
             headers=headers,
             auth=HTTPBasicAuth(self.token, '')
         )
-        return response.json()
+        resp = response.json()
+        if '_status' in resp:
+            # Considering an information is returned if a _status field is present ...
+            log.warning("backend status: %s", resp['_status'])
 
-    def method_patch(self, endpoint, data_json, headers, stop_inception=False):
+        if '_error' in resp:
+            # Considering a problem occured is an _error field is present ...
+            error = resp['_error']
+            log.error(
+                "backend error: %s, %s",
+                error['code'], error['message']
+            )
+            raise BackendException(error['code'], error['message'], resp)
+
+        return resp
+
+    def method_patch(self, endpoint, data, headers=None, stop_inception=False):
         """
         Method to update an item
 
         :param endpoint: endpoint (API URL)
         :type endpoint: str
-        :param data_json: properties of item to update
-        :type data_json:str
+        :param data: properties of item to update
+        :type data:str
         :param headers: headers (example: Content-Type). 'If-Match' required
         :type headers: dict
         :param stop_inception: if false try to get the right etag
@@ -372,11 +405,14 @@ class Backend(object):
         """
         if not self.token:
             log.error("Authentication required for deleting an object.")
-            raise BackendException(3001, "Access denied, please login before trying to patch")
+            raise BackendException(1001, "Access denied, please login before trying to patch")
+
+        if not headers:
+            headers = {'Content-Type': 'application/json'}
 
         response = requests.patch(
             '/'.join([self.url_endpoint_root, endpoint]),
-            json=data_json,
+            json=data,
             headers=headers,
             auth=HTTPBasicAuth(self.token, '')
         )
@@ -389,26 +425,53 @@ class Backend(object):
                 # update etag + retry
                 if stop_inception:
                     return '{}'
-                resp = self.method_get(endpoint)
+                resp = self.get('/'.join([self.url_endpoint_root, endpoint]))
                 headers['If-Match'] = resp['_etag']
-                return self.method_patch(endpoint, data_json, headers, True)
+                return self.method_patch(
+                    '/'.join([self.url_endpoint_root, endpoint]),
+                    json, headers, True
+                )
         else:
             # print("%s: %s for %s" % (response.status_code, response.content, endpoint))
             return response.json()
 
-    def method_delete(self, endpoint):
+    def method_delete(self, endpoint, headers):
         """
         Method to delete an item or all items
 
+        headers['If-Match'] must contain the _etag identifier of the element to delete
+
         :param endpoint: endpoint (API URL)
         :type endpoint: str
-        :return: None
+        :param headers: headers (example: Content-Type)
+        :type headers: dict
+        :return: response (creation information)
+        :rtype: dict
         """
         if not self.token:
             log.error("Authentication required for deleting an object.")
-            raise BackendException(4001, "Access denied, please login before trying to delete")
+            raise BackendException(1001, "Access denied, please login before trying to delete")
 
-        requests.delete(
+        response = requests.delete(
             '/'.join([self.url_endpoint_root, endpoint]),
+            headers=headers,
             auth=HTTPBasicAuth(self.token, '')
         )
+        if response.status_code == 204:
+            return {}
+
+        resp = response.json()
+        if '_status' in resp:
+            # Considering an information is returned if a _status field is present ...
+            log.warning("backend status: %s", resp['_status'])
+
+        if '_error' in resp:
+            # Considering a problem occured is an _error field is present ...
+            error = resp['_error']
+            log.error(
+                "backend error: %s, %s",
+                error['code'], error['message']
+            )
+            raise BackendException(error['code'], error['message'], resp)
+
+        return resp

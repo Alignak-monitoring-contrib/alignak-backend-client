@@ -1,1 +1,1 @@
-# alignakbackend-api-client
+# alignak_backend_client_api

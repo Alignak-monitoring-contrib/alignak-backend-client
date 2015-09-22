@@ -1,0 +1,31 @@
+CHANGES
+=======
+
+* Manage auth / token
+* Add auth basic management
+* Add argument to have possibility to get only the first page on get method
+* Add licence
+* Update travis
+* Update __init__
+* Fix
+* Fix python dict in test
+* CLean and fix test for python3
+* Fix test for python3
+* Try fix test in pytho3
+* Test test :D
+* Fix unit test
+* Fix docstring __init__
+* Add ignore R0801
+* Fix
+* Try fix
+* Fixes
+* Fix setup
+* Fix init
+* Fix __init__
+* Fixes pylint
+* Fix logger
+* Fix pylint / pep8 + fix requirements
+* Fix folders
+* FIx folder name
+* Fix tests
+* First commit
