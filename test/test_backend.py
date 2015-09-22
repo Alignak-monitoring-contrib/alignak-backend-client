@@ -34,13 +34,14 @@ def teardown_module(module):
     print ("") # this is to get a newline after the dots
     print ("teardown_module after everything in this file")
 
-# import alignak_backend_client
+import alignak_backend_client
 from alignak_backend_client.client import Backend, BackendException
 
 # extend the class unittest.TestCase
-class test_login_logout(unittest.TestCase):
+class test_0_login_logout(unittest.TestCase):
 
     def test_01_creation(self):
+        import alignak_backend_client
         print ''
         print 'test creation'
 
@@ -161,7 +162,7 @@ class test_login_logout(unittest.TestCase):
 
 
 # extend the class unittest.TestCase
-class test_get(unittest.TestCase):
+class test_1_get(unittest.TestCase):
 
     def test_11_domains_and_some_elements(self):
         print ''
@@ -348,7 +349,7 @@ class test_get(unittest.TestCase):
             print "Service: %s/%s" % (item['host_name'], item['service_description'])
 
 # extend the class unittest.TestCase
-class test_update(unittest.TestCase):
+class test_2_update(unittest.TestCase):
 
     def test_21_post(self):
         print ''
