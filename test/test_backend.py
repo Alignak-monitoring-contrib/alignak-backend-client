@@ -73,14 +73,14 @@ class test_0_login_logout(unittest.TestCase):
         assert_true(backend.url_endpoint_root == backend_address)
         assert_true(backend.token == None)
 
-    def test_02_refused_connection_username(self):
+    def test_02_bad_parameters(self):
         global backend_address
 
         print ''
         print 'test refused connection with username/password'
 
         # Create client API
-        backend = Backend("http://localhost:5000/")
+        backend = Backend(backend_address)
 
         print "no username or no password, login refused - exception 1001"
         with assert_raises(BackendException) as cm:
