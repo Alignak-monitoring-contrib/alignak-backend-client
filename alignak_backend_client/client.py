@@ -97,10 +97,7 @@ class Backend(object):
         :return: return True if authentication is successfull, otherwise False
         :rtype: bool
         """
-        log.info(
-            "request backend authentication for: %s, generate: %s",
-            username, generate
-        )
+        log.info("request backend authentication for: %s, generate: %s", username, generate)
 
         if not username or not password:
             raise BackendException(1001, "Missing mandatory parameters")
@@ -133,7 +130,7 @@ class Backend(object):
             raise BackendException(1000, "Backend exception: %s / %s" % (type(e), str(e)))
 
         resp = response.json()
-        log.info("authentication response: %s", resp)
+        log.debug("authentication response: %s", resp)
 
         if '_status' in resp:  # pragma: no cover - need specific backend tests
             # Considering an information is returned if a _status field is present ...
@@ -152,7 +149,7 @@ class Backend(object):
             if 'token' in resp:
                 self.token = resp['token']
                 self.authenticated = True
-                log.info("user authenticated: %s, token: %s", username, self.token)
+                log.info("user authenticated: %s", username)
                 return True
             elif generate == 'force':  # pragma: no cover - need specific backend tests
                 log.error("Token generation required but none provided.")
@@ -161,7 +158,7 @@ class Backend(object):
                 log.error("Token disabled ... to be implemented!")
                 return False
             elif generate == 'enabled':  # pragma: no cover - need specific backend tests
-                log.debug("Token enabled, but none provided, require new token generation")
+                log.warning("Token enabled, but none provided, require new token generation")
                 return self.login(username, password, 'force')
 
             return False  # pragma: no cover - unreachable ...
@@ -221,13 +218,13 @@ class Backend(object):
         :rtype: list
         """
         if not self.token:
-            log.error("Authentication required for getting an object.")
+            log.error("Authentication is required for getting an object.")
             raise BackendException(1001, "Access denied, please login before trying to get")
 
-        log.info("trying to get domains from backend: %s", self.url_endpoint_root)
+        log.debug("trying to get domains from backend: %s", self.url_endpoint_root)
 
         resp = self.get('')
-        log.debug("received data: %s", resp)
+        log.debug("received domains data: %s", resp)
         if "_links" in resp:
             _links = resp["_links"]
             if "child" in _links:
@@ -249,10 +246,10 @@ class Backend(object):
         :rtype: list
         """
         if not self.token:
-            log.error("Authentication required for getting an object.")
+            log.error("Authentication is required for getting an object.")
             raise BackendException(1001, "Access denied, please login before trying to get")
 
-        log.info("get, endpoint: %s, parameters: %s", endpoint, params)
+        log.debug("get, endpoint: %s, parameters: %s", endpoint, params)
 
         response = requests.get(
             '/'.join([self.url_endpoint_root, endpoint]),
@@ -267,11 +264,10 @@ class Backend(object):
         if '_error' in resp:  # pragma: no cover - need specific backend tests
             # Considering a problem occured is an _error field is present ...
             error = resp['_error']
-            log.error(
-                "backend error: %s, %s",
-                error['code'], error['message']
-            )
+            log.error("backend error: %s, %s", error['code'], error['message'])
             raise BackendException(error['code'], error['message'])
+
+        log.debug("get, endpoint: %s, response: %s", endpoint, resp)
 
         return resp
 
@@ -292,10 +288,10 @@ class Backend(object):
         :rtype: list
         """
         if not self.token:
-            log.error("Authentication required for getting an object.")
+            log.error("Authentication is required for getting an object.")
             raise BackendException(1001, "Access denied, please login before trying to get")
 
-        log.info("get_all, endpoint: %s, parameters: %s", endpoint, params)
+        log.debug("get_all, endpoint: %s, parameters: %s", endpoint, params)
 
         # Set max results at maximum value supported by the backend to limit requests number
         if not params:
@@ -344,7 +340,7 @@ class Backend(object):
         :rtype: dict
         """
         if not self.token:
-            log.error("Authentication required for deleting an object.")
+            log.error("Authentication is required for deleting an object.")
             raise BackendException(1001, "Access denied, please login before trying to post")
 
         if not headers:
@@ -388,11 +384,11 @@ class Backend(object):
         :rtype: dict
         """
         if not self.token:
-            log.error("Authentication required for deleting an object.")
+            log.error("Authentication is required for deleting an object.")
             raise BackendException(1001, "Access denied, please login before trying to patch")
 
         if not headers:
-            log.error("Header If-Match required for patching an object.")
+            log.error("Header If-Match is required for patching an object.")
             raise BackendException(1005, "Header If-Match required for patching an object")
 
         response = requests.patch(
@@ -433,7 +429,7 @@ class Backend(object):
         :rtype: dict
         """
         if not self.token:
-            log.error("Authentication required for deleting an object.")
+            log.error("Authentication is required for deleting an object.")
             raise BackendException(1001, "Access denied, please login before trying to delete")
 
         try:
