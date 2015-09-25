@@ -1,6 +1,10 @@
 CHANGES
 =======
 
+0.1
+---
+
+* Updated tests module and added gitattribute
 * Fix some logging levels and comments
 * Set version as Alpha 0.1.0
 * Added Coveralls badge in readme file
