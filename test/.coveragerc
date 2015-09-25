@@ -1,6 +1,11 @@
+[run]
+omit =
+   ./test*
+   */bottle.py
+
 [report]
 omit =
-    */python?.?/*
-    */site-packages/nose/*
-[run]
-omit = test*
+   */python?.?/*
+   */site-packages/nose/*
+   /usr/share/pyshared/*
+   ./test*

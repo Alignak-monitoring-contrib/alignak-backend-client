@@ -17,11 +17,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Alignak.  If not, see <http://www.gnu.org/licenses/>.
 
+echo 'pep8 ...'
 pep8 --max-line-length=100 --exclude='*.pyc, *.ini' alignak_backend_client/*
+echo 'pylint ...'
 pylint --rcfile=.pylintrc alignak_backend_client/
+echo 'pep157 ...'
 pep257 --select=D300 alignak_backend_client
+echo 'tests ...'
 cd test
 nosetests -xv --process-restartworker --processes=1 --process-timeout=300 --with-coverage --cover-package=alignak_backend_client test*.py
+echo 'coverage combine ...'
 coverage combine
 coverage report -m
 cd ..
