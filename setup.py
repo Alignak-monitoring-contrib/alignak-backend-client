@@ -6,23 +6,33 @@ from setuptools import setup
 import os
 del os.link
 
-setup(
-    name = "alignak_backend_client",
-    version = "0.1.1",
-    # packages = find_packages(),
-    # scripts = ['say_hello.py'],
+import alignak_backend_client
 
-    # Project uses reStructuredText, so ensure that the docutils get
-    # installed or upgraded on the target machine
-    install_requires = ['requests'],
+setup(
+    name="alignak_backend_client",
+    version=alignak_backend_client.__version__,
 
     # metadata for upload to PyPI
-    author = "Frédéric MOHIER",
-    author_email = "frederic.mohier@gmail.com",
-    description = "Client API for Alignak Backend",
-    license = "GPLv3",
-    keywords = "alignak monitoring",
-    url = "https://github.com/Alignak-monitoring-contrib/alignak-backend-client",   # project home page, if any
+    author="Frédéric MOHIER",
+    author_email="frederic.mohier@gmail.com",
+    keywords="alignak monitoring",
+    url="https://github.com/Alignak-monitoring-contrib/alignak-backend-client",
+    description="Client API for Alignak Backend",
+    long_description=open('README.rst').read(),
 
-    # could also include long_description, download_url, classifiers, etc.
+    packages = ['alignak_backend_client'],
+
+    install_requires=['requests'],
+
+    classifiers = [
+        'Development Status :: 4 - Beta',
+        'Environment :: Console',
+        'Intended Audience :: Developers',
+        'Intended Audience :: System Administrators',
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+        'Natural Language :: English',
+        'Programming Language :: Python',
+        'Topic :: System :: Monitoring',
+        'Topic :: System :: Systems Administration'
+    ]
 )

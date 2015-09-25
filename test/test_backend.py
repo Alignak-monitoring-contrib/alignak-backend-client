@@ -37,7 +37,7 @@ def teardown_module(module):
 import alignak_backend_client
 from alignak_backend_client.client import Backend, BackendException
 
-backend_address = "http://alignak-backend-test.siprossii.com:80"
+backend_address = "http://107.191.47.221:5000"
 # backend_address = "http://localhost:5000"
 
 # extend the class unittest.TestCase
@@ -595,7 +595,7 @@ class test_2_update(unittest.TestCase):
         print 'id:', contact_id
         print 'etag:', contact_etag
         with assert_raises(BackendException) as cm:
-            data = {'alias': 'modified test again and again'}
+            data = {'alias': 'modified with no header'}
             # headers['If-Match'] = contact_etag
             response = backend.patch('/'.join(['contact', contact_id]), data=data)
         ex = cm.exception

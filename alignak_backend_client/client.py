@@ -67,7 +67,7 @@ class Backend(object):
         """
         self.connected = False
         self.authenticated = False
-        if endpoint.endswith('/'):
+        if endpoint.endswith('/'):  # pragma: no cover - test url is complying ...
             self.url_endpoint_root = endpoint[0:-1]
         else:
             self.url_endpoint_root = endpoint
@@ -383,6 +383,7 @@ class Backend(object):
         :return: dictionary with response of update fields
         :rtype: dict
         """
+        log.info("Header If-Match: %s / %s / %s / %s", endpoint, data, headers, inception)
         if not self.token:
             log.error("Authentication is required for deleting an object.")
             raise BackendException(1001, "Access denied, please login before trying to patch")
@@ -400,18 +401,17 @@ class Backend(object):
         if response.status_code == 200:
             return response.json()
         elif response.status_code == 412:
-            # 412 means Precondition failed
-            if 'Client and server etags don' in response.content:
-                # update etag + retry
-                if inception:
-                    resp = self.get(endpoint)
-                    headers['If-Match'] = resp['_etag']
-                    return self.patch(
-                        endpoint,
-                        data=data, headers=headers, inception=False
-                    )
-                else:
-                    raise BackendException(412, response.content)
+            # 412 means Precondition failed, but confirm ...
+            if inception and 'Precondition Failed' in response.content:
+                # update etag and retry to patch
+                resp = self.get(endpoint)
+                headers['If-Match'] = resp['_etag']
+                return self.patch(
+                    endpoint,
+                    data=data, headers=headers, inception=False
+                )
+            else:
+                raise BackendException(412, response.content)
         else:  # pragma: no cover - should never occur
             return response.json()
 
