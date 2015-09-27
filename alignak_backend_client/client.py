@@ -333,7 +333,7 @@ class Backend(object):
         :param endpoint: endpoint (API URL)
         :type endpoint: str
         :param data: properties of item to create
-        :type data:str
+        :type data: dict
         :param headers: headers (example: Content-Type)
         :type headers: dict
         :return: response (creation information)
@@ -375,7 +375,7 @@ class Backend(object):
         :param endpoint: endpoint (API URL)
         :type endpoint: str
         :param data: properties of item to update
-        :type data:str
+        :type data: dict
         :param headers: headers (example: Content-Type). 'If-Match' required
         :type headers: dict
         :param inception: if True tries to get the last _etag
