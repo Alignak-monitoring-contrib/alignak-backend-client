@@ -1,15 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from setuptools import setup
-
 import os
+import sys
 del os.link
+
+try:
+    from setuptools import setup, find_packages
+except:
+    sys.exit("Error: missing python-setuptools library")
+
+try:
+    python_version = sys.version_info
+except:
+    python_version = (1, 5)
+if python_version < (2, 7):
+    sys.exit("This application requires a minimum Python 2.7.x, sorry!")
+elif python_version >= (3,):
+    sys.exit("This application is not yet compatible with Python 3.x, sorry!")
 
 import alignak_backend_client
 
 setup(
-    name="alignak_backend_client",
+    name="Alignak_backend_client",
     version=alignak_backend_client.__version__,
 
     # metadata for upload to PyPI
@@ -20,7 +33,10 @@ setup(
     description="Client API for Alignak Backend",
     long_description=open('README.rst').read(),
 
-    packages = ['alignak_backend_client'],
+    zip_safe=False,
+
+    packages=find_packages(),
+    include_package_data=True,
 
     install_requires=['requests'],
 
