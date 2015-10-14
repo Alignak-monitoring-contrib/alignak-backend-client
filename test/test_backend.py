@@ -37,10 +37,9 @@ def teardown_module(module):
 import alignak_backend_client
 from alignak_backend_client.client import Backend, BackendException
 
-backend_address = "http://107.191.47.221:5000"
-# backend_address = "http://localhost:5000"
+# backend_address = "http://107.191.47.221:5000"
+backend_address = "http://localhost:5000"
 
-# extend the class unittest.TestCase
 class test_0_login_logout(unittest.TestCase):
 
     def test_01_creation(self):
@@ -204,7 +203,6 @@ class test_0_login_logout(unittest.TestCase):
         assert_true(ex.code == 1001, str(ex))
 
 
-# extend the class unittest.TestCase
 class test_1_get(unittest.TestCase):
 
     def test_11_domains_and_some_elements(self):
@@ -431,14 +429,14 @@ class test_1_get(unittest.TestCase):
             assert_true('service_description' in item)
             print "Service: %s/%s" % (item['host_name'], item['service_description'])
 
-# extend the class unittest.TestCase
+
 class test_2_update(unittest.TestCase):
 
-    def test_21_post(self):
+    def test_21_post_pacth_delete(self):
         global backend_address
 
         print ''
-        print 'post some elements'
+        print 'post/delete/patch some elements'
 
         # Create client API
         backend = Backend(backend_address)
@@ -518,6 +516,26 @@ class test_2_update(unittest.TestCase):
 
         assert_true(tp_id != '')
 
+        # Create a new contact, bad parameters
+        print 'create a contact, missing fields'
+        # Mandatory field contact_name is missing ...
+        data = {
+            "name": "Testing contact",
+            "alias": "Fred",
+            "back_role_super_admin": False,
+            "back_role_admin": [],
+            "min_business_impact": 0,
+        }
+        with assert_raises(BackendException) as cm:
+            response = backend.post('contact', data=data)
+        ex = cm.exception
+        print 'exception:', str(ex.code), ex.message, ex.response
+        if "_issues" in ex.response:
+            for issue in ex.response["_issues"]:
+                print "Issue: %s - %s" %(issue, ex.response["_issues"][issue])
+        assert_true(ex.code == 422)
+        assert_true(ex.response["_issues"])
+
         # Create a new contact
         print 'create a contact'
         data = {
@@ -580,6 +598,7 @@ class test_2_update(unittest.TestCase):
         print "Got %d elements:" % len(items)
         assert_true('_items' not in items)
         assert_true(len(items) > 0)
+        # Search test contact
         contact_id = ''
         contact_etag = ''
         for item in items:
@@ -628,6 +647,21 @@ class test_2_update(unittest.TestCase):
         print 'response:', response
         assert_true(response['alias'] == 'modified test again')
 
+        print 'changing contact unknown field ... must be refused'
+        print 'id:', contact_id
+        print 'etag:', contact_etag
+        with assert_raises(BackendException) as cm:
+            data = {'bad_field': 'bad field name ... unknown in data model'}
+            headers = {'If-Match': contact_etag}
+            response = backend.patch('/'.join(['contact', contact_id]), data=data, headers=headers, inception=True)
+        ex = cm.exception
+        print 'exception:', str(ex.code), ex.message, ex.response
+        if "_issues" in ex.response:
+            for issue in ex.response["_issues"]:
+                print "Issue: %s - %s" %(issue, ex.response["_issues"][issue])
+        assert_true(ex.code == 422)
+        assert_true(ex.response["_issues"])
+
         print 'changing contact alias ... bad _etag (inception = False)'
         print 'id:', contact_id
         print 'etag:', contact_etag
@@ -638,6 +672,11 @@ class test_2_update(unittest.TestCase):
         ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 412, str(ex))
+
+        response = backend.get('/'.join(['contact', contact_id]))
+        print 'response:', response
+        # Not changed !
+        assert_true(response['alias'] == 'modified test again')
 
         response = backend.get('/'.join(['contact', contact_id]))
         print 'response:', response
