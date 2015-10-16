@@ -691,3 +691,156 @@ class test_2_update(unittest.TestCase):
         ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1003, str(ex))
+
+    def test_22_post_pacth_delete(self):
+        global backend_address
+
+        print ''
+        print 'post/delete/patch some hostgroups'
+
+        # Create client API
+        backend = Backend(backend_address)
+
+        print 'Login ...'
+        print 'authenticated:', backend.authenticated
+        result = backend.login('admin', 'admin')
+        print 'authenticated:', backend.authenticated
+        print 'token:', backend.token
+        assert_true(backend.authenticated)
+
+        # Get all hostgroups
+        print 'get all hostgroups at once'
+        items = backend.get_all('hostgroup')
+        print "Got %d elements:" % len(items)
+        assert_true('_items' not in items)
+        for item in items:
+            assert_true('hostgroup_name' in item)
+            assert_true('_id' in item)
+            assert_true('_etag' in item)
+            print "Group: ", item['hostgroup_name'], item['_id']
+            # Test contact still exists ... delete him!
+            if item['hostgroup_name'] == 'test':
+                headers = { 'If-Match': item['_etag'] }
+                response = backend.delete('/'.join(['hostgroup', item['_id']]), headers)
+                print "Response:", response
+
+        # Create a new hostgroup, bad parameters
+        print 'create a hostgroup, missing fields'
+        # Mandatory field hostgroup_name is missing ...
+        data = {
+            "name": "Testing hostgroup",
+            "alias": "Fred",
+            "back_role_super_admin": False,
+            "back_role_admin": [],
+            "min_business_impact": 0,
+        }
+        with assert_raises(BackendException) as cm:
+            response = backend.post('hostgroup', data=data)
+        ex = cm.exception
+        print 'exception:', str(ex.code), ex.message, ex.response
+        if "_issues" in ex.response:
+            for issue in ex.response["_issues"]:
+                print "Issue: %s - %s" %(issue, ex.response["_issues"][issue])
+        assert_true(ex.code == 422)
+        assert_true(ex.response["_issues"])
+
+        # Create a new hostgroup
+        print 'create a hostgroup'
+        data = {
+            "hostgroup_name": "test",
+            "name": "Testing hostgroup",
+            "alias": "Fred",
+            "note": "Hostgroup note ...",
+            "realm": "all"
+        }
+        response = backend.post('hostgroup', data=data)
+        print "Response:", response
+        assert_true('_created' in response)
+        assert_true('_updated' in response)
+        assert_true(response['_created'] == response['_updated'])
+
+        # Get all hostgroups
+        print 'get all hostgroups at once'
+        # Filter the templates ...
+        items = backend.get_all('hostgroup')
+        print "Got %d elements:" % len(items)
+        assert_true('_items' not in items)
+        assert_true(len(items) > 0)
+        # Search test hostgroup
+        hostgroup_id = ''
+        hostgroup_etag = ''
+        for item in items:
+            assert_true('hostgroup_name' in item)
+            print "hostgroup: ", item['hostgroup_name']
+            if item['hostgroup_name'] == 'test':
+                hostgroup_id = item['_id']
+                hostgroup_etag = item['_etag']
+        assert_true(hostgroup_id != '')
+        assert_true(hostgroup_etag != '')
+
+        print 'changing hostgroup alias ... no _etag'
+        print 'id:', hostgroup_id
+        print 'etag:', hostgroup_etag
+        with assert_raises(BackendException) as cm:
+            data = {'alias': 'modified with no header'}
+            # headers['If-Match'] = hostgroup_etag
+            response = backend.patch('/'.join(['hostgroup', hostgroup_id]), data=data)
+        ex = cm.exception
+        print 'exception:', str(ex.code)
+        assert_true(ex.code == 1005, str(ex))
+
+        print 'changing hostgroup alias ...'
+        print 'id:', hostgroup_id
+        print 'etag:', hostgroup_etag
+        data = {'alias': 'modified test'}
+        headers = {'If-Match': hostgroup_etag}
+        response = backend.patch('/'.join(['hostgroup', hostgroup_id]), data=data, headers=headers)
+        print 'response:', response
+        assert_true(response['_status'] == 'OK')
+
+        response = backend.get('/'.join(['hostgroup', hostgroup_id]))
+        print 'response:', response
+        assert_true(response['alias'] == 'modified test')
+
+        print 'changing hostgroup alias ... bad _etag (inception = True)'
+        print 'id:', hostgroup_id
+        print 'etag:', hostgroup_etag
+        data = {'alias': 'modified test again'}
+        headers = {'If-Match': hostgroup_etag}
+        response = backend.patch('/'.join(['hostgroup', hostgroup_id]), data=data, headers=headers, inception=True)
+        print 'response:', response
+        assert_true(response['_status'] == 'OK')
+
+        response = backend.get('/'.join(['hostgroup', hostgroup_id]))
+        print 'response:', response
+        assert_true(response['alias'] == 'modified test again')
+
+        print 'changing hostgroup alias ... bad _etag (inception = False)'
+        print 'id:', hostgroup_id
+        print 'etag:', hostgroup_etag
+        with assert_raises(BackendException) as cm:
+            data = {'alias': 'modified test again and again'}
+            headers = {'If-Match': hostgroup_etag}
+            response = backend.patch('/'.join(['hostgroup', hostgroup_id]), data=data, headers=headers)
+        ex = cm.exception
+        print 'exception:', str(ex.code)
+        assert_true(ex.code == 412, str(ex))
+
+        response = backend.get('/'.join(['hostgroup', hostgroup_id]))
+        print 'response:', response
+        # Not changed !
+        assert_true(response['alias'] == 'modified test again')
+
+        response = backend.get('/'.join(['hostgroup', hostgroup_id]))
+        print 'response:', response
+        # Not changed !
+        assert_true(response['alias'] == 'modified test again')
+
+        print 'deleting hostgroup ... bad href'
+        with assert_raises(BackendException) as cm:
+            headers = { 'If-Match': item['_etag'] }
+            response = backend.delete('/'.join(['hostgroup', '5'+item['_id']]), headers)
+            print "Response:", response
+        ex = cm.exception
+        print 'exception:', str(ex.code)
+        assert_true(ex.code == 1003, str(ex))
