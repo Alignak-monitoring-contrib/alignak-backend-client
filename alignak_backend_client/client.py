@@ -21,9 +21,6 @@
 """
 This module is a wrapper to get, post, patch, delete in alignak-backend
 """
-import traceback
-import logging
-
 import json
 import requests
 from requests import Timeout, HTTPError
@@ -35,6 +32,7 @@ try:  # Python 2.7+
     from logging import NullHandler
 except ImportError:
     class NullHandler(logging.Handler):
+        """ ... """
         def emit(self, record):
             pass
 
@@ -364,12 +362,10 @@ class Backend(object):
         )
         try:
             resp = response.json()
-        except Exception as e:
+        except Exception:
             resp = response
             logger.error(
-                "Response is not JSON formatted: %d / %s" % (
-                    response.status_code, response.content
-                )
+                "Response is not JSON formatted: %d / %s", response.status_code, response.content
             )
             raise BackendException(
                 1003,
