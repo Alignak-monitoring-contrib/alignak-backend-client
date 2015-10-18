@@ -340,7 +340,7 @@ class Backend(object):
         :rtype: dict
         """
         if not self.token:
-            logger.error("Authentication is required for deleting an object.")
+            logger.error("Authentication is required for adding an object.")
             raise BackendException(1001, "Access denied, please login before trying to post")
 
         if not headers:
