@@ -352,6 +352,9 @@ class Backend(object):
             headers=headers,
             auth=HTTPBasicAuth(self.token, '')
         )
+        if response.status_code != 200:
+            return response
+
         resp = response.json()
         if '_status' in resp:
             # Considering an information is returned if a _status field is present ...
