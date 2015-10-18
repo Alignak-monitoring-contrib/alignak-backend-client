@@ -362,24 +362,24 @@ class Backend(object):
             headers=headers,
             auth=HTTPBasicAuth(self.token, '')
         )
-        if response.status_code != 200:
-            return response
+        if 200 <= response.status_code < 300:
+            resp = response.json()
+            if '_status' in resp:
+                # Considering an information is returned if a _status field is present ...
+                logger.warning("backend status: %s", resp['_status'])
 
-        resp = response.json()
-        if '_status' in resp:
-            # Considering an information is returned if a _status field is present ...
-            logger.warning("backend status: %s", resp['_status'])
+            if '_error' in resp:  # pragma: no cover - need specific backend tests
+                # Considering a problem occured is an _error field is present ...
+                error = resp['_error']
+                logger.error("backend error: %s, %s", error['code'], error['message'])
+                if '_issues' in resp:
+                    for issue in resp['_issues']:
+                        logger.error(" - issue: %s: %s", issue, resp['_issues'][issue])
+                raise BackendException(error['code'], error['message'], resp)
 
-        if '_error' in resp:  # pragma: no cover - need specific backend tests
-            # Considering a problem occured is an _error field is present ...
-            error = resp['_error']
-            logger.error("backend error: %s, %s", error['code'], error['message'])
-            if '_issues' in resp:
-                for issue in resp['_issues']:
-                    logger.error(" - issue: %s: %s", issue, resp['_issues'][issue])
-            raise BackendException(error['code'], error['message'], resp)
+            return resp
 
-        return resp
+        return response
 
     def patch(self, endpoint, data, headers=None, inception=False):
         """
