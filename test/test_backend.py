@@ -37,8 +37,8 @@ def teardown_module(module):
 import alignak_backend_client
 from alignak_backend_client.client import Backend, BackendException
 
-# backend_address = "http://107.191.47.221:5000"
-backend_address = "http://localhost:5000"
+backend_address = "http://107.191.47.221:5000"
+# backend_address = "http://localhost:5000"
 
 class test_0_login_logout(unittest.TestCase):
 
