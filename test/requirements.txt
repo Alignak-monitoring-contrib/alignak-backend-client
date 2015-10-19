@@ -1,7 +1,6 @@
 # this is the requirements dedicated to tests.
 -r ../requirements.txt
 unittest2
-mock
 coveralls
 nose-cov
 coverage
@@ -9,5 +8,3 @@ nose
 pylint
 pep8
 pep257
-httmock
-ujson

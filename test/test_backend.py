@@ -288,12 +288,13 @@ class test_1_get(unittest.TestCase):
 
         # Get all available endpoints
         print 'get all domains'
-        # Filter the templates ...
         items = backend.get_domains()
         print "Got %d elements:" % len(items)
         assert_true('_items' not in items)
         assert_true(len(items) > 0)
         for item in items:
+            if item['href'] in ['loghost', 'logservice']:
+                continue
             assert_true('href' in item)
             assert_true('title' in item)
             print "Domain: ", item
@@ -310,12 +311,13 @@ class test_1_get(unittest.TestCase):
 
         # Get all available endpoints
         print 'get all domains'
-        # Filter the templates ...
         items = backend.get_domains()
         print "Got %d elements:" % len(items)
         assert_true('_items' not in items)
         assert_true(len(items) > 0)
         for item in items:
+            if item['href'] in ['loghost', 'logservice']:
+                continue
             assert_true('href' in item)
             assert_true('title' in item)
             print "Domain: ", item
