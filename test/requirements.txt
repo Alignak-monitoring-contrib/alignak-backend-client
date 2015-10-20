@@ -9,5 +9,11 @@ pylint
 pep8
 pep257
 alignak_backend
-configparser
+Eve>=0.5
+docopt
+jsonschema
+Eve-docs
+flask-bootstrap
+configparser ; python_version < '3.0'
+future
 uwsgi
