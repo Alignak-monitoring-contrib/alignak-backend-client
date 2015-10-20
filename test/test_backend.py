@@ -21,26 +21,43 @@
 # import the unit testing module
 
 import os
-import unittest
+import time
+import unittest2
+import subprocess
 
 from nose import with_setup # optional
 from nose.tools import *
 
+pid = None
+backend_address = "http://localhost:5000"
+
 def setup_module(module):
-    print ("") # this is to get a newline after the dots
-    print ("setup_module before anything in this file")
+    print ("")
+    print ("start alignak backend")
+
+    global pid
+    global backend_address
+    pid = subprocess.Popen(['uwsgi', '-w', 'alignakbackend:app', '--socket', '0.0.0.0:5000', '--protocol=http', '--enable-threads'])
+    time.sleep(3)
+    # backend = Backend(backend_address)
+    # backend.login("admin", "admin", "force")
 
 def teardown_module(module):
-    print ("") # this is to get a newline after the dots
-    print ("teardown_module after everything in this file")
+    print ("")
+    print ("stop alignak backend")
 
-import alignak_backend_client
+    global pid
+    pid.kill()
+
 from alignak_backend_client.client import Backend, BackendException
 
-backend_address = "http://107.191.47.221:5000"
-# backend_address = "http://localhost:5000"
+class test_0_login_logout(unittest2.TestCase):
 
-class test_0_login_logout(unittest.TestCase):
+    # @classmethod
+    # def setUpClass(cls):
+
+    # @classmethod
+    # def tearDownClass(cls):
 
     def test_01_creation(self):
         global backend_address
@@ -203,7 +220,7 @@ class test_0_login_logout(unittest.TestCase):
         assert_true(ex.code == 1001, str(ex))
 
 
-class test_1_get(unittest.TestCase):
+class test_1_get(unittest2.TestCase):
 
     def test_11_domains_and_some_elements(self):
         global backend_address
@@ -432,7 +449,7 @@ class test_1_get(unittest.TestCase):
             print "Service: %s/%s" % (item['host_name'], item['service_description'])
 
 
-class test_2_update(unittest.TestCase):
+class test_2_update(unittest2.TestCase):
 
     def test_21_post_pacth_delete(self):
         global backend_address
