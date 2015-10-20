@@ -33,7 +33,7 @@ try:  # Python 2.7+
 except ImportError:
     class NullHandler(logging.Handler):
         """ ... """
-        def emit(self, record):
+        def emit(self, record):  # pragma: no cover
             pass
 
 logging.getLogger(__name__).addHandler(NullHandler())

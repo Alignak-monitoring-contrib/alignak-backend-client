@@ -37,7 +37,8 @@ def setup_module(module):
 
     global pid
     global backend_address
-    pid = subprocess.Popen(['uwsgi', '-w', 'alignakbackend:app', '--socket', '0.0.0.0:5000', '--protocol=http', '--enable-threads'])
+    # pid = subprocess.Popen(['uwsgi', '-w', 'alignakbackend:app', '--socket', '0.0.0.0:5000', '--protocol=http', '--enable-threads'])
+    pid = subprocess.Popen(['alignak_backend'])
     time.sleep(3)
     # backend = Backend(backend_address)
     # backend.login("admin", "admin", "force")
@@ -451,7 +452,7 @@ class test_1_get(unittest2.TestCase):
 
 class test_2_update(unittest2.TestCase):
 
-    def test_21_post_pacth_delete(self):
+    def test_21_post_patch_delete(self):
         global backend_address
 
         print ''
@@ -711,7 +712,7 @@ class test_2_update(unittest2.TestCase):
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1003, str(ex))
 
-    def test_22_post_pacth_delete(self):
+    def test_22_post_patch_delete(self):
         global backend_address
 
         print ''
