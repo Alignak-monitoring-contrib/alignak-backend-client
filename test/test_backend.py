@@ -37,11 +37,8 @@ def setup_module(module):
 
     global pid
     global backend_address
-    # pid = subprocess.Popen(['uwsgi', '-w', 'alignakbackend:app', '--socket', '0.0.0.0:5000', '--protocol=http', '--enable-threads'])
     pid = subprocess.Popen(['alignak_backend'])
     time.sleep(3)
-    # backend = Backend(backend_address)
-    # backend.login("admin", "admin", "force")
 
 def teardown_module(module):
     print ("")
@@ -53,12 +50,6 @@ def teardown_module(module):
 from alignak_backend_client.client import Backend, BackendException
 
 class test_0_login_logout(unittest2.TestCase):
-
-    # @classmethod
-    # def setUpClass(cls):
-
-    # @classmethod
-    # def tearDownClass(cls):
 
     def test_01_creation(self):
         global backend_address
@@ -99,16 +90,32 @@ class test_0_login_logout(unittest2.TestCase):
         # Create client API
         backend = Backend(backend_address)
 
-        print "no username or no password, login refused - exception 1001"
+        print 'Login - missing credentials ...'
         with assert_raises(BackendException) as cm:
-            result = backend.login(None, None)
-        ex = cm.exception # raised exception is available through exception property of context
+            backend.login(None, None)
+        ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1001, str(ex))
-        print 'authenticated:', backend.authenticated
+        assert_true("Missing mandatory parameters" in str(ex))
+
+        print 'Login - missing credentials ...'
+        with assert_raises(BackendException) as cm:
+            backend.login('', '')
+        ex = cm.exception
+        print 'exception:', str(ex.code)
+        assert_true(ex.code == 1001, str(ex))
+        assert_true("Missing mandatory parameters" in str(ex))
+
+        print 'Login - missing credentials ...'
+        with assert_raises(BackendException) as cm:
+            backend.login('admin', '')
+        ex = cm.exception
+        print 'exception:', str(ex.code)
+        assert_true(ex.code == 1001, str(ex))
 
         print "invalid username/password, login refused - returns false"
         result = backend.login('admin', 'bad_password')
+        assert_false(result)
         assert_false(backend.authenticated)
 
     def test_03_token_generate(self):
@@ -133,7 +140,7 @@ class test_0_login_logout(unittest2.TestCase):
         print 'token2:', token2
         assert_true(token1 != token2)
 
-    def test_04_connection_username(self):
+    def test_04_login(self):
         global backend_address
 
         print ''
@@ -143,32 +150,32 @@ class test_0_login_logout(unittest2.TestCase):
         backend = Backend(backend_address)
 
         print 'Login ...'
-        result = backend.login('admin', 'admin')
+        assert backend.login('admin', 'admin')
         print 'authenticated:', backend.authenticated
         print 'token:', backend.token
         assert_true(backend.authenticated)
 
         print 'Logout ...'
-        result = backend.logout()
+        backend.logout()
         print 'authenticated:', backend.authenticated
         print 'token:', backend.token
         assert_false(backend.authenticated)
 
         print 'Login ...'
         print 'authenticated:', backend.authenticated
-        result = backend.login('admin', 'admin')
+        assert backend.login('admin', 'admin')
         print 'authenticated:', backend.authenticated
         print 'token:', backend.token
         assert_true(backend.authenticated)
 
         print 'Logout ...'
-        result = backend.logout()
+        backend.logout()
         print 'authenticated:', backend.authenticated
         print 'token:', backend.token
         assert_false(backend.authenticated)
 
         print 'Logout ...'
-        result = backend.logout()
+        backend.logout()
         print 'authenticated:', backend.authenticated
         print 'token:', backend.token
         assert_false(backend.authenticated)
@@ -223,7 +230,7 @@ class test_0_login_logout(unittest2.TestCase):
 
 class test_1_get(unittest2.TestCase):
 
-    def test_11_domains_and_some_elements(self):
+    def test_1_domains_and_some_elements(self):
         global backend_address
 
         print ''
@@ -234,7 +241,7 @@ class test_1_get(unittest2.TestCase):
 
         print 'Login ...'
         print 'authenticated:', backend.authenticated
-        result = backend.login('admin', 'admin')
+        backend.login('admin', 'admin')
         print 'authenticated:', backend.authenticated
         print 'token:', backend.token
         assert_true(backend.authenticated)
@@ -288,7 +295,7 @@ class test_1_get(unittest2.TestCase):
             assert_true('contact_name' in item)
             print "Contact: ", item['contact_name']
 
-    def test_12_all_pages(self):
+    def test_2_all_pages(self):
         global backend_address
 
         print ''
@@ -299,7 +306,7 @@ class test_1_get(unittest2.TestCase):
 
         print 'Login ...'
         print 'authenticated:', backend.authenticated
-        result = backend.login('admin', 'admin')
+        backend.login('admin', 'admin')
         print 'authenticated:', backend.authenticated
         print 'token:', backend.token
         assert_true(backend.authenticated)
@@ -362,7 +369,7 @@ class test_1_get(unittest2.TestCase):
             assert_true('_etag' in item)
             print "etag: ", item['_etag']
 
-    def test_13_page_after_page(self):
+    def test_3_page_after_page(self):
         global backend_address
 
         print ''
@@ -374,7 +381,7 @@ class test_1_get(unittest2.TestCase):
 
         print 'Login ...'
         print 'authenticated:', backend.authenticated
-        result = backend.login('admin', 'admin')
+        backend.login('admin', 'admin')
         print 'authenticated:', backend.authenticated
         print 'token:', backend.token
         assert_true(backend.authenticated)
@@ -452,7 +459,7 @@ class test_1_get(unittest2.TestCase):
 
 class test_2_update(unittest2.TestCase):
 
-    def test_21_post_patch_delete(self):
+    def test_1_post_patch_delete(self):
         global backend_address
 
         print ''
@@ -463,7 +470,7 @@ class test_2_update(unittest2.TestCase):
 
         print 'Login ...'
         print 'authenticated:', backend.authenticated
-        result = backend.login('admin', 'admin')
+        backend.login('admin', 'admin')
         print 'authenticated:', backend.authenticated
         print 'token:', backend.token
         assert_true(backend.authenticated)
@@ -712,7 +719,7 @@ class test_2_update(unittest2.TestCase):
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1003, str(ex))
 
-    def test_22_post_patch_delete(self):
+    def test_2_post_patch_delete(self):
         global backend_address
 
         print ''
@@ -723,7 +730,7 @@ class test_2_update(unittest2.TestCase):
 
         print 'Login ...'
         print 'authenticated:', backend.authenticated
-        result = backend.login('admin', 'admin')
+        assert backend.login('admin', 'admin')
         print 'authenticated:', backend.authenticated
         print 'token:', backend.token
         assert_true(backend.authenticated)
