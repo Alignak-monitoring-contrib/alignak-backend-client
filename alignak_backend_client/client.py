@@ -30,10 +30,10 @@ from requests.auth import HTTPBasicAuth
 import logging
 try:  # Python 2.7+
     from logging import NullHandler
-except ImportError:
+except ImportError:  # pragma: no cover
     class NullHandler(logging.Handler):
         """ ... """
-        def emit(self, record):  # pragma: no cover
+        def emit(self, record):
             pass
 
 logging.getLogger(__name__).addHandler(NullHandler())
@@ -125,6 +125,7 @@ class Backend(object):
                 headers=headers
             )
             if response.status_code == 401:
+                logger.debug("authentication refused: %s", response.content)
                 return False
             response.raise_for_status()
         except Timeout as e:  # pragma: no cover - need specific backend tests
@@ -362,7 +363,7 @@ class Backend(object):
         )
         try:
             resp = response.json()
-        except Exception:
+        except Exception:  # pragma: no cover - should never happen now ... old backend version.
             resp = response
             logger.error(
                 "Response is not JSON formatted: %d / %s", response.status_code, response.content
