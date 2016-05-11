@@ -23,7 +23,7 @@ This module is a wrapper to get, post, patch, delete in alignak-backend
 """
 import json
 import traceback
-from logging import getLogger, WARNING
+from logging import getLogger, DEBUG, WARNING
 import requests
 from requests import Timeout, HTTPError
 from requests.auth import HTTPBasicAuth
@@ -385,6 +385,8 @@ class Backend(object):
 
         if not headers:
             headers = {'Content-Type': 'application/json'}
+            if isinstance(data, dict):
+                data = json.dumps(data)
 
         logger.debug("post, endpoint: %s", '/'.join([self.url_endpoint_root, endpoint]))
         logger.debug("post, headers: %s", headers)
@@ -403,7 +405,7 @@ class Backend(object):
             else:
                 response = requests.post(
                     '/'.join([self.url_endpoint_root, endpoint]),
-                    data=json.loads(data),
+                    data=data,
                     files=files,
                     auth=HTTPBasicAuth(self.token, '')
                 )
