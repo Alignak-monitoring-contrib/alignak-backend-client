@@ -24,12 +24,15 @@ This module is a wrapper to get, post, patch, delete in alignak-backend
 import json
 import traceback
 from logging import getLogger, DEBUG, WARNING
+
+from urlparse import urljoin
+
 import requests
 from requests import Timeout, HTTPError
 from requests.auth import HTTPBasicAuth
 
+# Set logger level to WARNING, this to allow global application DEBUG logs without being spammed...
 logger = getLogger(__name__)
-# Set logger level to WARNING, this to allow global application DEBUG logs without being spammed... ;)
 logger.setLevel(WARNING)
 
 # Disable default logs for requests and urllib3 libraries ...
@@ -117,7 +120,7 @@ class Backend(object):
                 params['action'] = 'generate'
 
             response = requests.post(
-                '/'.join([self.url_endpoint_root, 'login']),
+                urljoin(self.url_endpoint_root, 'login'),
                 json=params,
                 headers=headers
             )
@@ -184,7 +187,7 @@ class Backend(object):
 
         try:
             response = requests.post(
-                '/'.join([self.url_endpoint_root, 'logout']),
+                urljoin(self.url_endpoint_root, 'logout'),
                 auth=HTTPBasicAuth(self.token, '')
             )
             response.raise_for_status()
@@ -266,11 +269,11 @@ class Backend(object):
         try:
             logger.debug(
                 "get, endpoint: %s, parameters: %s",
-                '/'.join([self.url_endpoint_root, endpoint]),
+                urljoin(self.url_endpoint_root, endpoint),
                 params
             )
             response = requests.get(
-                '/'.join([self.url_endpoint_root, endpoint]),
+                urljoin(self.url_endpoint_root, endpoint),
                 params=params,
                 auth=HTTPBasicAuth(self.token, '')
             )
@@ -388,14 +391,14 @@ class Backend(object):
             if isinstance(data, dict):
                 data = json.dumps(data)
 
-        logger.debug("post, endpoint: %s", '/'.join([self.url_endpoint_root, endpoint]))
+        logger.debug("post, endpoint: %s", urljoin(self.url_endpoint_root, endpoint))
         logger.debug("post, headers: %s", headers)
         logger.debug("post, data: %s = %s", type(data), data)
         logger.debug("post, files: %s", files)
         try:
             if not files:
                 response = requests.post(
-                    '/'.join([self.url_endpoint_root, endpoint]),
+                    urljoin(self.url_endpoint_root, endpoint),
                     data=data,
                     files=files,
                     headers=headers,
@@ -404,7 +407,7 @@ class Backend(object):
                 resp = response.json()
             else:
                 response = requests.post(
-                    '/'.join([self.url_endpoint_root, endpoint]),
+                    urljoin(self.url_endpoint_root, endpoint),
                     data=data,
                     files=files,
                     auth=HTTPBasicAuth(self.token, '')
@@ -492,11 +495,11 @@ class Backend(object):
             logger.error("Header If-Match is required for patching an object.")
             raise BackendException(1005, "Header If-Match required for patching an object")
 
-        logger.debug("patch, endpoint: %s", '/'.join([self.url_endpoint_root, endpoint]))
+        logger.debug("patch, endpoint: %s", urljoin(self.url_endpoint_root, endpoint))
         logger.debug("patch, headers: %s", headers)
         logger.debug("patch, data: %s", data)
         response = requests.patch(
-            '/'.join([self.url_endpoint_root, endpoint]),
+            urljoin(self.url_endpoint_root, endpoint),
             json=data,
             headers=headers,
             auth=HTTPBasicAuth(self.token, '')
@@ -556,11 +559,11 @@ class Backend(object):
             logger.error("Authentication is required for deleting an object.")
             raise BackendException(1001, "Access denied, please login before trying to delete")
 
-        logger.debug("delete, endpoint: %s", '/'.join([self.url_endpoint_root, endpoint]))
+        logger.debug("delete, endpoint: %s", urljoin(self.url_endpoint_root, endpoint))
         logger.debug("delete, headers: %s", headers)
         try:
             response = requests.delete(
-                '/'.join([self.url_endpoint_root, endpoint]),
+                urljoin(self.url_endpoint_root, endpoint),
                 headers=headers,
                 auth=HTTPBasicAuth(self.token, '')
             )
