@@ -39,6 +39,9 @@ logger.setLevel(WARNING)
 getLogger("requests").setLevel(WARNING)
 getLogger("urllib3").setLevel(WARNING)
 
+# Define pagination limits according to backend's ones!
+BACKEND_PAGINATION_LIMIT = 50
+BACKEND_PAGINATION_DEFAULT = 25
 
 class BackendException(Exception):
     """Specific backend exception
@@ -309,8 +312,8 @@ class Backend(object):
 
         If an error occurs, a BackendException is raised.
 
-        If the max_results parameter is not specified in parameters, it is set to 200
-        (backend maximum value) to limit requests number.
+        If the max_results parameter is not specified in parameters, it is set to
+        BACKEND_PAGINATION_LIMIT (backend maximum value) to limit requests number.
 
         This method builds a response that always contains: _items and _status
         {
@@ -335,9 +338,9 @@ class Backend(object):
 
         # Set max results at maximum value supported by the backend to limit requests number
         if not params:
-            params = {'max_results': 200}
+            params = {'max_results': BACKEND_PAGINATION_LIMIT}
         elif params and 'max_results' not in params:
-            params['max_results'] = 200
+            params['max_results'] = BACKEND_PAGINATION_LIMIT
 
         # Get first page
         last_page = False
