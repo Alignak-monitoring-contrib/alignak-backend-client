@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with AlignakBackend.  If not, see <http://www.gnu.org/licenses/>.
 """
-This module is a wrapper to get, post, patch, delete in alignak-backend
+    This module is a wrapper to get, post, patch, delete with the REST applications backend
 """
 import json
 import traceback
@@ -42,6 +42,7 @@ getLogger("urllib3").setLevel(WARNING)
 # Define pagination limits according to backend's ones!
 BACKEND_PAGINATION_LIMIT = 50
 BACKEND_PAGINATION_DEFAULT = 25
+
 
 class BackendException(Exception):
     """Specific backend exception
