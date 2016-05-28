@@ -48,6 +48,8 @@ def teardown_module(module):
     pid.kill()
 
 from alignak_backend_client.client import Backend, BackendException
+# TODO: what a mess ... those imports do not work !!!
+from alignak_backend_client.client import BACKEND_PAGINATION_LIMIT, BACKEND_PAGINATION_DEFAULT
 
 class test_0_login_logout(unittest2.TestCase):
 
