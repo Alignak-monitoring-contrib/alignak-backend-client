@@ -22,6 +22,7 @@
 
 import os
 import time
+import shlex
 import unittest2
 import subprocess
 
@@ -35,9 +36,21 @@ def setup_module(module):
     print ("")
     print ("start alignak backend")
 
+    # Set test mode for applications backend
+    os.environ['TEST_ALIGNAK_BACKEND'] = '1'
+    os.environ['TEST_ALIGNAK_BACKEND_DB'] = 'alignak-backend'
+
+    # Delete used mongo DBs
+    exit_code = subprocess.call(
+        shlex.split('mongo %s --eval "db.dropDatabase()"' % os.environ['TEST_ALIGNAK_BACKEND_DB'])
+    )
+    assert exit_code == 0
+
     global pid
     global backend_address
-    pid = subprocess.Popen(['alignak_backend'])
+    pid = subprocess.Popen(
+        shlex.split('alignak_backend')
+    )
     time.sleep(3)
 
 def teardown_module(module):
@@ -49,6 +62,7 @@ def teardown_module(module):
 
 from alignak_backend_client.client import Backend, BackendException
 # TODO: what a mess ... those imports do not work !!!
+# from alignak_backend_client.client import manifest
 from alignak_backend_client.client import BACKEND_PAGINATION_LIMIT, BACKEND_PAGINATION_DEFAULT
 
 class test_0_login_logout(unittest2.TestCase):
@@ -252,50 +266,44 @@ class test_1_get(unittest2.TestCase):
         print 'get all domains'
         # Filter the templates ...
         items = backend.get_domains()
-        print "Got %d elements:" % len(items)
-        assert_true('_items2' not in items)
-        assert_true(len(items) > 0)
+        print "Got %d elements: %s" % (len(items), items)
+        assert_true('_items' not in items)
+        assert_true(len(items) == 25)
         for item in items:
             assert_true('href' in item)
             assert_true('title' in item)
             print "Domain: ", item
 
         # Get all hosts
-        print 'get all hosts at once'
+        print 'get all hosts at once ...'
         # Filter the templates ...
         parameters = { 'where': '{"register":true}', 'max_results': 1 }
         items = backend.get_all('host', params=parameters)
-        print "Got %d elements:" % len(items)
-        assert_true('_items' not in items)
-        # assert_true(len(items) > 0)
-        for item in items:
-            assert_true('host_name' in item)
-            print "Host: ", item['host_name']
+        assert_true('_items' in items)
+        print "Got %d elements: %s" % (len(items['_items']), items['_items'])
+        assert_true(len(items['_items']) == 0)
 
         # Get all services
         print 'get all services at once'
         # Filter the templates ...
         parameters = { 'where': '{"register":true}' }
         items = backend.get_all('service', params=parameters)
-        print "Got %d elements:" % len(items)
-        assert_true('_items' not in items)
-        # assert_true(len(items) > 0)
-        for item in items:
-            assert_true('host_name' in item)
-            assert_true('service_description' in item)
-            print "Service: %s/%s" % (item['host_name'], item['service_description'])
+        assert_true('_items' in items)
+        print "Got %d elements: %s" % (len(items['_items']), items['_items'])
+        assert_true(len(items['_items']) == 0)
 
         # Get all contacts
         print 'get all contacts at once'
         # Filter the templates ...
         parameters = { 'where': '{"register":true}' }
         items = backend.get_all('contact', params=parameters)
-        print "Got %d elements:" % len(items)
-        assert_true('_items' not in items)
-        # assert_true(len(items) > 0)
-        for item in items:
+        assert_true('_items' in items)
+        print "Got %d elements: %s" % (len(items['_items']), items['_items'])
+        assert_true(len(items['_items']) == 1)  # One contact exists in the contact ... admin!
+        for item in items['_items']:
             assert_true('contact_name' in item)
             print "Contact: ", item['contact_name']
+            assert item['contact_name'] == 'admin'
 
     def test_2_all_pages(self):
         global backend_address
@@ -313,14 +321,16 @@ class test_1_get(unittest2.TestCase):
         print 'token:', backend.token
         assert_true(backend.authenticated)
 
-        # Get all available endpoints
+        # Get all available endpoints:
+        # all the one that must be empty ...
         print 'get all domains'
         items = backend.get_domains()
         print "Got %d elements:" % len(items)
         assert_true('_items' not in items)
         assert_true(len(items) > 0)
         for item in items:
-            if item['href'] in ['loghost', 'logservice']:
+            # livesynthesis and contact must contain one item
+            if item['href'] in ['livesynthesis', 'contact']:
                 continue
             assert_true('href' in item)
             assert_true('title' in item)
@@ -329,21 +339,19 @@ class test_1_get(unittest2.TestCase):
             # Get all elements
             print 'get all %s at once' % item['href']
             items = backend.get_all(item['href'])
-            print "Got %d elements:" % len(items)
-            assert_true('_items' not in items)
-            # assert_true(len(items) > 0)
-            for item in items:
-                assert_true('_etag' in item)
-                print "etag: ", item['_etag']
+            assert_true('_items' in items)
+            print "Got %d elements: %s" % (len(items['_items']), items['_items'])
+            assert_true(len(items['_items']) == 0)
 
-        # Get all available endpoints
+        # Get all available endpoints:
+        # all the one that must NOT be empty ...
         print 'get all domains'
         items = backend.get_domains()
         print "Got %d elements:" % len(items)
         assert_true('_items' not in items)
         assert_true(len(items) > 0)
         for item in items:
-            if item['href'] in ['loghost', 'logservice']:
+            if item['href'] not in ['livesynthesis', 'contact']:
                 continue
             assert_true('href' in item)
             assert_true('title' in item)
@@ -353,23 +361,11 @@ class test_1_get(unittest2.TestCase):
             print 'get all %s at once' % item['href']
             params = {'max_results': 2}
             items = backend.get_all(item['href'], params=params)
-            print "Got %d elements:" % len(items)
-            assert_true('_items' not in items)
-            # assert_true(len(items) > 0)
-            for item in items:
-                assert_true('_etag' in item)
-                print "etag: ", item['_etag']
-
-        # Get all hosts
-        print 'get all hosts at once, 1 item per page'
-        params = {'max_results':1}
-        items = backend.get_all(item['href'], params=params)
-        print "Got %d elements:" % len(items)
-        assert_true('_items' not in items)
-        # assert_true(len(items) > 0)
-        for item in items:
-            assert_true('_etag' in item)
-            print "etag: ", item['_etag']
+            assert_true('_items' in items)
+            print "Got %d elements: %s" % (len(items['_items']), items['_items'])
+            assert_true(len(items['_items']) == 1)
+            for item in items['_items']:
+                print "Item: ", item
 
     def test_3_page_after_page(self):
         global backend_address
@@ -481,67 +477,54 @@ class test_2_update(unittest2.TestCase):
         print 'get all contacts at once'
         parameters = { 'where': '{"register":true}' }
         items = backend.get_all('contact', params=parameters)
-        print "Got %d elements:" % len(items)
-        assert_true('_items' not in items)
-        for item in items:
-            assert_true('contact_name' in item)
-            assert_true('_id' in item)
-            assert_true('_etag' in item)
-            print "Contact: ", item['contact_name'], item['_id']
-            # Test contact still exists ... delete him!
-            if item['contact_name'] == 'test':
-                headers = { 'If-Match': item['_etag'] }
-                response = backend.delete('/'.join(['contact', item['_id']]), headers)
-                print "Response:", response
+        assert_true('_items' in items)
+        print "Got %d contacts: %s" % (len(items['_items']), items['_items'])
+        assert_true(len(items['_items']) == 1)  # Exactly one contact ...
+        for item in items['_items']:
+            print "Contact: ", item
 
         # Get all timeperiods
         print 'get all timeperiods at once'
         parameters = { 'where': '{"register":true}' }
         items = backend.get_all('timeperiod', params=parameters)
-        print "Got %d elements:" % len(items)
-        assert_true('_items' not in items)
+        assert_true('_items' in items)
+        print "Got %d timeperiods: %s" % (len(items['_items']), items['_items'])
+        assert_true(len(items['_items']) == 0)  # Nothing ...
+
+        # Create a new timeperiod
+        print 'create a timeperiod'
+        data = {
+            "timeperiod_name": "test",
+            "name": "Testing TP",
+            "alias": "Test TP",
+            "dateranges": [
+                {u'monday': u'09:00-17:00'},
+                {u'tuesday': u'09:00-17:00'},
+                {u'wednesday': u'09:00-17:00'},
+                {u'thursday': u'09:00-17:00'},
+                {u'friday': u'09:00-17:00'}
+            ],
+            "register": True
+        }
+        response = backend.post('timeperiod', data=data)
+        print "Response:", response
+        assert_true('_created' in response)
+        assert_true('_updated' in response)
+        assert_true(response['_created'] == response['_updated'])
+
+        # Get all timeperiods
+        print 'get all timeperiods at once'
+        parameters = { 'where': '{"register":true}' }
+        items = backend.get_all('timeperiod', params=parameters)
+        assert_true('_items' in items)
+        print "Got %d timeperiods: %s" % (len(items['_items']), items['_items'])
+        assert_true(len(items['_items']) == 1)  # One !
         tp_id = ''
-        for item in items:
+        for item in items['_items']:
             assert_true('timeperiod_name' in item)
             assert_true('_id' in item)
             tp_id = item['_id']
-            print item
             print "TP: %s (%s), id=%s" % (item['timeperiod_name'], item['name'], item['_id'])
-
-        if not tp_id:
-            # Create a new timeperiod
-            print 'create a timeperiod'
-            data = {
-                "timeperiod_name": "test",
-                "name": "Testing TP",
-                "alias": "Test TP",
-                "dateranges": [
-                    {u'monday': u'09:00-17:00'},
-                    {u'tuesday': u'09:00-17:00'},
-                    {u'wednesday': u'09:00-17:00'},
-                    {u'thursday': u'09:00-17:00'},
-                    {u'friday': u'09:00-17:00'}
-                ],
-                "register": True
-            }
-            response = backend.post('timeperiod', data=data)
-            print "Response:", response
-            assert_true('_created' in response)
-            assert_true('_updated' in response)
-            assert_true(response['_created'] == response['_updated'])
-
-            # Get all timeperiods
-            print 'get all timeperiods at once'
-            parameters = { 'where': '{"register":true}' }
-            items = backend.get_all('timeperiod', params=parameters)
-            print "Got %d elements:" % len(items)
-            assert_true('_items' not in items)
-            tp_id = ''
-            for item in items:
-                assert_true('timeperiod_name' in item)
-                assert_true('_id' in item)
-                tp_id = item['_id']
-                print "TP: %s (%s), id=%s" % (item['timeperiod_name'], item['name'], item['_id'])
 
         assert_true(tp_id != '')
 
@@ -624,13 +607,13 @@ class test_2_update(unittest2.TestCase):
         # Filter the templates ...
         parameters = { 'where': '{"register":true}' }
         items = backend.get_all('contact', params=parameters)
-        print "Got %d elements:" % len(items)
-        assert_true('_items' not in items)
-        assert_true(len(items) > 0)
+        assert_true('_items' in items)
+        print "Got %d contacts: %s" % (len(items['_items']), items['_items'])
+        assert_true(len(items['_items']) == 2)  # Two !
         # Search test contact
         contact_id = ''
         contact_etag = ''
-        for item in items:
+        for item in items['_items']:
             assert_true('contact_name' in item)
             print "Contact: ", item['contact_name']
             if item['contact_name'] == 'test':
@@ -740,18 +723,9 @@ class test_2_update(unittest2.TestCase):
         # Get all hostgroups
         print 'get all hostgroups at once'
         items = backend.get_all('hostgroup')
-        print "Got %d elements:" % len(items)
-        assert_true('_items' not in items)
-        for item in items:
-            assert_true('hostgroup_name' in item)
-            assert_true('_id' in item)
-            assert_true('_etag' in item)
-            print "Group: ", item['hostgroup_name'], item['_id']
-            # Test contact still exists ... delete him!
-            if item['hostgroup_name'] == 'test':
-                headers = { 'If-Match': item['_etag'] }
-                response = backend.delete('/'.join(['hostgroup', item['_id']]), headers)
-                print "Response:", response
+        assert_true('_items' in items)
+        print "Got %d hostgroups: %s" % (len(items['_items']), items['_items'])
+        assert_true(len(items['_items']) == 0)  # None!
 
         # Create a new hostgroup, bad parameters
         print 'create a hostgroup, missing fields'
@@ -792,13 +766,13 @@ class test_2_update(unittest2.TestCase):
         print 'get all hostgroups at once'
         # Filter the templates ...
         items = backend.get_all('hostgroup')
-        print "Got %d elements:" % len(items)
-        assert_true('_items' not in items)
-        assert_true(len(items) > 0)
+        assert_true('_items' in items)
+        print "Got %d hostgroups: %s" % (len(items['_items']), items['_items'])
+        assert_true(len(items['_items']) == 1)  # One !
         # Search test hostgroup
         hostgroup_id = ''
         hostgroup_etag = ''
-        for item in items:
+        for item in items['_items']:
             assert_true('hostgroup_name' in item)
             print "hostgroup: ", item['hostgroup_name']
             if item['hostgroup_name'] == 'test':
