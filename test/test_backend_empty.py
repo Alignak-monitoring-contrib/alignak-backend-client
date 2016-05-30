@@ -53,10 +53,10 @@ def setup_module(module):
     )
     time.sleep(2)
 
-    print ("populate backend content")
+    print ("populate backend content - delete all content")
     fh = open("NUL","w")
     pid2 = subprocess.Popen(
-        shlex.split('cfg_to_backend --verbose --delete cfg/test_default/main.cfg')
+        shlex.split('cfg_to_backend --verbose --delete')
     )
     pid2.communicate()
     fh.close()
@@ -67,7 +67,6 @@ def setup_module(module):
         shlex.split('alignak_backend')
     )
     time.sleep(2)
-    assert False
 
 def teardown_module(module):
     print ("")
@@ -293,8 +292,7 @@ class test_1_get(unittest2.TestCase):
         # Get all hosts
         print 'get all hosts at once ...'
         # Filter the templates ...
-        parameters = { 'where': '{"register":true}', 'max_results': 1 }
-        items = backend.get_all('host', params=parameters)
+        items = backend.get_all('host', params={})
         assert_true('_items' in items)
         print "Got %d elements: %s" % (len(items['_items']), items['_items'])
         assert_true(len(items['_items']) == 0)
@@ -302,8 +300,7 @@ class test_1_get(unittest2.TestCase):
         # Get all services
         print 'get all services at once'
         # Filter the templates ...
-        parameters = { 'where': '{"register":true}' }
-        items = backend.get_all('service', params=parameters)
+        items = backend.get_all('service', params={})
         assert_true('_items' in items)
         print "Got %d elements: %s" % (len(items['_items']), items['_items'])
         assert_true(len(items['_items']) == 0)
@@ -311,15 +308,14 @@ class test_1_get(unittest2.TestCase):
         # Get all contacts
         print 'get all contacts at once'
         # Filter the templates ...
-        parameters = { 'where': '{"register":true}' }
-        items = backend.get_all('contact', params=parameters)
+        items = backend.get_all('contact', params={})
         assert_true('_items' in items)
         print "Got %d elements: %s" % (len(items['_items']), items['_items'])
         assert_true(len(items['_items']) == 1)  # One contact exists in the contact ... admin!
         for item in items['_items']:
-            assert_true('contact_name' in item)
-            print "Contact: ", item['contact_name']
-            assert item['contact_name'] == 'admin'
+            assert_true('name' in item)
+            print "Contact: ", item['name']
+            assert item['name'] == 'admin'
 
     def test_2_all_pages(self):
         global backend_address
@@ -346,7 +342,7 @@ class test_1_get(unittest2.TestCase):
         assert_true(len(items) > 0)
         for item in items:
             # livesynthesis and contact must contain one item
-            if item['href'] in ['livesynthesis', 'contact']:
+            if item['href'] in ['realm', 'livesynthesis', 'contact', 'timeperiod']:
                 continue
             assert_true('href' in item)
             assert_true('title' in item)
@@ -367,7 +363,7 @@ class test_1_get(unittest2.TestCase):
         assert_true('_items' not in items)
         assert_true(len(items) > 0)
         for item in items:
-            if item['href'] not in ['livesynthesis', 'contact']:
+            if item['href'] not in ['realm', 'livesynthesis', 'contact', 'timeperiod']:
                 continue
             assert_true('href' in item)
             assert_true('title' in item)
@@ -489,9 +485,18 @@ class test_2_update(unittest2.TestCase):
         print 'token:', backend.token
         assert_true(backend.authenticated)
 
+        # Get realm all
+        print 'get realm'
+        parameters = { 'where': '{"name": "All"}' }
+        items = backend.get('realm', params=parameters)
+        assert_true('_items' in items)
+        print "Got %d realm: %s" % (len(items['_items']), items['_items'])
+        assert_true(len(items['_items']) == 1)  # Exactly one realm ...
+        realm_id = items['_items'][0]['_id']
+
         # Get all contacts
         print 'get all contacts at once'
-        parameters = { 'where': '{"register":true}' }
+        parameters = {}
         items = backend.get_all('contact', params=parameters)
         assert_true('_items' in items)
         print "Got %d contacts: %s" % (len(items['_items']), items['_items'])
@@ -510,7 +515,7 @@ class test_2_update(unittest2.TestCase):
         # Create a new timeperiod
         print 'create a timeperiod'
         data = {
-            "timeperiod_name": "test",
+            "name": "test",
             "name": "Testing TP",
             "alias": "Test TP",
             "dateranges": [
@@ -520,7 +525,7 @@ class test_2_update(unittest2.TestCase):
                 {u'thursday': u'09:00-17:00'},
                 {u'friday': u'09:00-17:00'}
             ],
-            "register": True
+            "_realm": realm_id
         }
         response = backend.post('timeperiod', data=data)
         print "Response:", response
@@ -530,17 +535,17 @@ class test_2_update(unittest2.TestCase):
 
         # Get all timeperiods
         print 'get all timeperiods at once'
-        parameters = { 'where': '{"register":true}' }
-        items = backend.get_all('timeperiod', params=parameters)
+        items = backend.get_all('timeperiod', params={})
         assert_true('_items' in items)
         print "Got %d timeperiods: %s" % (len(items['_items']), items['_items'])
-        assert_true(len(items['_items']) == 1)  # One !
+        assert_true(len(items['_items']) == 2)  # Two ... one more !
         tp_id = ''
         for item in items['_items']:
-            assert_true('timeperiod_name' in item)
+            print "Item: ", item
+            assert_true('name' in item)
             assert_true('_id' in item)
             tp_id = item['_id']
-            print "TP: %s (%s), id=%s" % (item['timeperiod_name'], item['name'], item['_id'])
+            print "TP: %s, id=%s" % (item['name'], item['_id'])
 
         assert_true(tp_id != '')
 
@@ -567,11 +572,8 @@ class test_2_update(unittest2.TestCase):
         # Create a new contact
         print 'create a contact'
         data = {
-            "contact_name": "test",
-            "name": "Testing contact",
-            "alias": "Fred",
-            "back_role_super_admin": False,
-            "back_role_admin": [],
+            "name": "test",
+            "alias": "Testing contact",
             "min_business_impact": 0,
             "email": "frederic.mohier@gmail.com",
 
@@ -610,7 +612,7 @@ class test_2_update(unittest2.TestCase):
             "address6": "",
             "pager": "",
             "notificationways": [],
-            "register": True
+            "_realm": realm_id
         }
         response = backend.post('contact', data=data)
         print "Response:", response
@@ -621,8 +623,7 @@ class test_2_update(unittest2.TestCase):
         # Get all contacts
         print 'get all contacts at once'
         # Filter the templates ...
-        parameters = { 'where': '{"register":true}' }
-        items = backend.get_all('contact', params=parameters)
+        items = backend.get_all('contact', params={})
         assert_true('_items' in items)
         print "Got %d contacts: %s" % (len(items['_items']), items['_items'])
         assert_true(len(items['_items']) == 2)  # Two !
@@ -630,9 +631,9 @@ class test_2_update(unittest2.TestCase):
         contact_id = ''
         contact_etag = ''
         for item in items['_items']:
-            assert_true('contact_name' in item)
-            print "Contact: ", item['contact_name']
-            if item['contact_name'] == 'test':
+            assert_true('name' in item)
+            print "Contact: ", item['name']
+            if item['name'] == 'test':
                 contact_id = item['_id']
                 contact_etag = item['_etag']
         assert_true(contact_id != '')
@@ -736,6 +737,15 @@ class test_2_update(unittest2.TestCase):
         print 'token:', backend.token
         assert_true(backend.authenticated)
 
+        # Get realm all
+        print 'get realm'
+        parameters = { 'where': '{"name": "All"}' }
+        items = backend.get('realm', params=parameters)
+        assert_true('_items' in items)
+        print "Got %d realm: %s" % (len(items['_items']), items['_items'])
+        assert_true(len(items['_items']) == 1)  # Exactly one realm ...
+        realm_id = items['_items'][0]['_id']
+
         # Get all hostgroups
         print 'get all hostgroups at once'
         items = backend.get_all('hostgroup')
@@ -745,12 +755,9 @@ class test_2_update(unittest2.TestCase):
 
         # Create a new hostgroup, bad parameters
         print 'create a hostgroup, missing fields'
-        # Mandatory field hostgroup_name is missing ...
+        # Mandatory field name is missing ...
         data = {
-            "name": "Testing hostgroup",
-            "alias": "Fred",
-            "back_role_super_admin": False,
-            "back_role_admin": [],
+            "alias": "Testing hostgroup",
             "min_business_impact": 0,
         }
         with assert_raises(BackendException) as cm:
@@ -766,11 +773,10 @@ class test_2_update(unittest2.TestCase):
         # Create a new hostgroup
         print 'create a hostgroup'
         data = {
-            "hostgroup_name": "test",
-            "name": "Testing hostgroup",
-            "alias": "Fred",
+            "name": "test",
+            "alias": "Testing hostgroup",
             "note": "Hostgroup note ...",
-            "realm": "all"
+            "realm": realm_id
         }
         response = backend.post('hostgroup', data=data)
         print "Response:", response
@@ -789,9 +795,9 @@ class test_2_update(unittest2.TestCase):
         hostgroup_id = ''
         hostgroup_etag = ''
         for item in items['_items']:
-            assert_true('hostgroup_name' in item)
-            print "hostgroup: ", item['hostgroup_name']
-            if item['hostgroup_name'] == 'test':
+            assert_true('name' in item)
+            print "hostgroup: ", item['name']
+            if item['name'] == 'test':
                 hostgroup_id = item['_id']
                 hostgroup_etag = item['_etag']
         assert_true(hostgroup_id != '')
