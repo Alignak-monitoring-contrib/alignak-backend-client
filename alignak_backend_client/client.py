@@ -410,6 +410,7 @@ class Backend(object):
                 )
                 resp = response.json()
             else:
+                # Posting files is not yet used, but reserved for future use...
                 response = requests.post(
                     urljoin(self.url_endpoint_root, endpoint),
                     data=data,
