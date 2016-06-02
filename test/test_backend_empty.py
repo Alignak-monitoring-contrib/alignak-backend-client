@@ -54,12 +54,10 @@ def setup_module(module):
     time.sleep(2)
 
     print ("populate backend content - delete all content")
-    fh = open("NUL","w")
     pid2 = subprocess.Popen(
-        shlex.split('cfg_to_backend --verbose --delete')
+        shlex.split('alignak_backend_import --verbose --delete')
     )
     pid2.communicate()
-    fh.close()
 
     # Stop and start backend to make sure that it is restarted after its content deletion...
     pid.kill()
