@@ -773,7 +773,6 @@ class test_2_update(unittest2.TestCase):
         data = {
             "name": "test",
             "alias": "Testing hostgroup",
-            "note": "Hostgroup note ...",
             "realm": realm_id
         }
         response = backend.post('hostgroup', data=data)
