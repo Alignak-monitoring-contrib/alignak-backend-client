@@ -6,12 +6,12 @@
 Alignak REST backend
 """
 # Application manifest
-VERSION = (0, 3, 1)
+VERSION = (0, 4, 0)
 
-__application__ = u"Alignak_Backend_client"
+__application__ = u"Alignak Backend client"
 __version__ = '.'.join((str(each) for each in VERSION[:4]))
 __author__ = u"Alignak team"
-__copyright__ = u"(c) 2015 - %s" % __author__
+__copyright__ = u"(c) 2015-2016 - %s" % __author__
 __license__ = u"GNU Affero General Public License, version 3"
 __description__ = u"Alignak backend client library"
 __releasenotes__ = u"""Alignak backend client library"""
