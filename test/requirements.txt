@@ -8,12 +8,5 @@ nose
 pylint
 pep8
 pep257
-alignak_backend
-Eve>=0.5
-docopt
-jsonschema
-Eve-docs
-flask-bootstrap
-configparser ; python_version < '3.0'
-future
-uwsgi
+# alignak_backend
+-e git+git://github.com/Alignak-monitoring-contrib/alignak-backend.git@Improve_cfg_to_backend#egg=alignak_backend
