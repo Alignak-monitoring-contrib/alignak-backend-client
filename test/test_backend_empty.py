@@ -292,7 +292,6 @@ class test_1_get(unittest2.TestCase):
 
         # Get all hosts
         print 'get all hosts at once ...'
-        # Filter the templates ...
         items = backend.get_all('host', params={})
         assert_true('_items' in items)
         print "Got %d elements: %s" % (len(items['_items']), items['_items'])
@@ -300,7 +299,6 @@ class test_1_get(unittest2.TestCase):
 
         # Get all services
         print 'get all services at once'
-        # Filter the templates ...
         items = backend.get_all('service', params={})
         assert_true('_items' in items)
         print "Got %d elements: %s" % (len(items['_items']), items['_items'])
@@ -308,7 +306,6 @@ class test_1_get(unittest2.TestCase):
 
         # Get all contacts
         print 'get all contacts at once'
-        # Filter the templates ...
         items = backend.get_all('contact', params={})
         assert_true('_items' in items)
         print "Got %d elements: %s" % (len(items['_items']), items['_items'])

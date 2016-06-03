@@ -290,36 +290,30 @@ class test_1_get(unittest2.TestCase):
             assert_true('title' in item)
             print "Domain: ", item
 
+        # Get all contacts
+        print 'get all contacts at once'
+        parameters = {}
+        items = backend.get_all('contact', params=parameters)
+        assert_true('_items' in items)
+        items = items['_items']
+        print "Got %d elements: %s" % (len(items), items)
+        # assert_true(len(items) == 4)
+
         # Get all hosts
         print 'get all hosts at once ...'
-        # Filter the templates ...
-        parameters = { 'where': '{"register":true}', 'max_results': 1 }
+        parameters = {}
         items = backend.get_all('host', params=parameters)
-        assert_true('_items' in items)
-        print "Got %d elements: %s" % (len(items['_items']), items['_items'])
-        assert_true(len(items['_items']) == 0)
+        items = items['_items']
+        print "Got %d elements" % (len(items))
+        # assert_true(len(items) == 10)
 
         # Get all services
         print 'get all services at once'
-        # Filter the templates ...
-        parameters = { 'where': '{"register":true}' }
+        parameters = {}
         items = backend.get_all('service', params=parameters)
-        assert_true('_items' in items)
-        print "Got %d elements: %s" % (len(items['_items']), items['_items'])
-        assert_true(len(items['_items']) == 0)
-
-        # Get all contacts
-        print 'get all contacts at once'
-        # Filter the templates ...
-        parameters = { 'where': '{"register":true}' }
-        items = backend.get_all('contact', params=parameters)
-        assert_true('_items' in items)
-        print "Got %d elements: %s" % (len(items['_items']), items['_items'])
-        assert_true(len(items['_items']) == 1)  # One contact exists in the contact ... admin!
-        for item in items['_items']:
-            assert_true('contact_name' in item)
-            print "Contact: ", item['contact_name']
-            assert item['contact_name'] == 'admin'
+        items = items['_items']
+        print "Got %d elements" % (len(items))
+        # assert_true(len(items) == 78)
 
     def test_2_all_pages(self):
         global backend_address
@@ -338,28 +332,6 @@ class test_1_get(unittest2.TestCase):
         assert_true(backend.authenticated)
 
         # Get all available endpoints:
-        # all the one that must be empty ...
-        print 'get all domains'
-        items = backend.get_domains()
-        print "Got %d elements:" % len(items)
-        assert_true('_items' not in items)
-        assert_true(len(items) > 0)
-        for item in items:
-            # livesynthesis and contact must contain one item
-            if item['href'] in ['livesynthesis', 'contact']:
-                continue
-            assert_true('href' in item)
-            assert_true('title' in item)
-            print "Domain: ", item
-
-            # Get all elements
-            print 'get all %s at once' % item['href']
-            items = backend.get_all(item['href'])
-            assert_true('_items' in items)
-            print "Got %d elements: %s" % (len(items['_items']), items['_items'])
-            assert_true(len(items['_items']) == 0)
-
-        # Get all available endpoints:
         # all the one that must NOT be empty ...
         print 'get all domains'
         items = backend.get_domains()
@@ -367,8 +339,6 @@ class test_1_get(unittest2.TestCase):
         assert_true('_items' not in items)
         assert_true(len(items) > 0)
         for item in items:
-            if item['href'] not in ['livesynthesis', 'contact']:
-                continue
             assert_true('href' in item)
             assert_true('title' in item)
             print "Domain: ", item
@@ -377,11 +347,8 @@ class test_1_get(unittest2.TestCase):
             print 'get all %s at once' % item['href']
             params = {'max_results': 2}
             items = backend.get_all(item['href'], params=params)
-            assert_true('_items' in items)
-            print "Got %d elements: %s" % (len(items['_items']), items['_items'])
-            assert_true(len(items['_items']) == 1)
-            for item in items['_items']:
-                print "Item: ", item
+            items = items['_items']
+            print "Got %d elements" % (len(items))
 
     def test_3_page_after_page(self):
         global backend_address
@@ -469,397 +436,3 @@ class test_1_get(unittest2.TestCase):
             assert_true('host_name' in item)
             assert_true('service_description' in item)
             print "Service: %s/%s" % (item['host_name'], item['service_description'])
-
-
-class test_2_update(unittest2.TestCase):
-
-    def test_1_post_patch_delete(self):
-        global backend_address
-
-        print ''
-        print 'post/delete/patch some elements'
-
-        # Create client API
-        backend = Backend(backend_address)
-
-        print 'Login ...'
-        print 'authenticated:', backend.authenticated
-        backend.login('admin', 'admin')
-        print 'authenticated:', backend.authenticated
-        print 'token:', backend.token
-        assert_true(backend.authenticated)
-
-        # Get all contacts
-        print 'get all contacts at once'
-        parameters = { 'where': '{"register":true}' }
-        items = backend.get_all('contact', params=parameters)
-        assert_true('_items' in items)
-        print "Got %d contacts: %s" % (len(items['_items']), items['_items'])
-        assert_true(len(items['_items']) == 1)  # Exactly one contact ...
-        for item in items['_items']:
-            print "Contact: ", item
-
-        # Get all timeperiods
-        print 'get all timeperiods at once'
-        parameters = { 'where': '{"register":true}' }
-        items = backend.get_all('timeperiod', params=parameters)
-        assert_true('_items' in items)
-        print "Got %d timeperiods: %s" % (len(items['_items']), items['_items'])
-        assert_true(len(items['_items']) == 0)  # Nothing ...
-
-        # Create a new timeperiod
-        print 'create a timeperiod'
-        data = {
-            "timeperiod_name": "test",
-            "name": "Testing TP",
-            "alias": "Test TP",
-            "dateranges": [
-                {u'monday': u'09:00-17:00'},
-                {u'tuesday': u'09:00-17:00'},
-                {u'wednesday': u'09:00-17:00'},
-                {u'thursday': u'09:00-17:00'},
-                {u'friday': u'09:00-17:00'}
-            ],
-            "register": True
-        }
-        response = backend.post('timeperiod', data=data)
-        print "Response:", response
-        assert_true('_created' in response)
-        assert_true('_updated' in response)
-        assert_true(response['_created'] == response['_updated'])
-
-        # Get all timeperiods
-        print 'get all timeperiods at once'
-        parameters = { 'where': '{"register":true}' }
-        items = backend.get_all('timeperiod', params=parameters)
-        assert_true('_items' in items)
-        print "Got %d timeperiods: %s" % (len(items['_items']), items['_items'])
-        assert_true(len(items['_items']) == 1)  # One !
-        tp_id = ''
-        for item in items['_items']:
-            assert_true('timeperiod_name' in item)
-            assert_true('_id' in item)
-            tp_id = item['_id']
-            print "TP: %s (%s), id=%s" % (item['timeperiod_name'], item['name'], item['_id'])
-
-        assert_true(tp_id != '')
-
-        # Create a new contact, bad parameters
-        print 'create a contact, missing fields'
-        # Mandatory field contact_name is missing ...
-        data = {
-            "name": "Testing contact",
-            "alias": "Fred",
-            "back_role_super_admin": False,
-            "back_role_admin": [],
-            "min_business_impact": 0,
-        }
-        with assert_raises(BackendException) as cm:
-            response = backend.post('contact', data=data)
-        ex = cm.exception
-        print 'exception:', str(ex.code), ex.message, ex.response
-        if "_issues" in ex.response:
-            for issue in ex.response["_issues"]:
-                print "Issue: %s - %s" %(issue, ex.response["_issues"][issue])
-        assert_true(ex.code == 422)
-        assert_true(ex.response["_issues"])
-
-        # Create a new contact
-        print 'create a contact'
-        data = {
-            "contact_name": "test",
-            "name": "Testing contact",
-            "alias": "Fred",
-            "back_role_super_admin": False,
-            "back_role_admin": [],
-            "min_business_impact": 0,
-            "email": "frederic.mohier@gmail.com",
-
-            "is_admin": False,
-            "expert": False,
-            "can_submit_commands": False,
-
-            "host_notifications_enabled": True,
-            "host_notification_period": tp_id,
-            "host_notification_commands": [
-            ],
-            "host_notification_options": [
-                "d",
-                "u",
-                "r"
-            ],
-
-            "service_notifications_enabled": True,
-            "service_notification_period": tp_id,
-            "service_notification_commands": [ ],
-            "service_notification_options": [
-                "w",
-                "u",
-                "c",
-                "r"
-            ],
-            "retain_status_information": False,
-            "note": "Monitoring template : default",
-            "retain_nonstatus_information": False,
-            "definition_order": 100,
-            "address1": "",
-            "address2": "",
-            "address3": "",
-            "address4": "",
-            "address5": "",
-            "address6": "",
-            "pager": "",
-            "notificationways": [],
-            "register": True
-        }
-        response = backend.post('contact', data=data)
-        print "Response:", response
-        assert_true('_created' in response)
-        assert_true('_updated' in response)
-        assert_true(response['_created'] == response['_updated'])
-
-        # Get all contacts
-        print 'get all contacts at once'
-        # Filter the templates ...
-        parameters = { 'where': '{"register":true}' }
-        items = backend.get_all('contact', params=parameters)
-        assert_true('_items' in items)
-        print "Got %d contacts: %s" % (len(items['_items']), items['_items'])
-        assert_true(len(items['_items']) == 2)  # Two !
-        # Search test contact
-        contact_id = ''
-        contact_etag = ''
-        for item in items['_items']:
-            assert_true('contact_name' in item)
-            print "Contact: ", item['contact_name']
-            if item['contact_name'] == 'test':
-                contact_id = item['_id']
-                contact_etag = item['_etag']
-        assert_true(contact_id != '')
-        assert_true(contact_etag != '')
-
-        print 'changing contact alias ... no _etag'
-        print 'id:', contact_id
-        print 'etag:', contact_etag
-        with assert_raises(BackendException) as cm:
-            data = {'alias': 'modified with no header'}
-            # headers['If-Match'] = contact_etag
-            response = backend.patch('/'.join(['contact', contact_id]), data=data)
-        ex = cm.exception
-        print 'exception:', str(ex.code)
-        assert_true(ex.code == 1005, str(ex))
-
-        print 'changing contact alias ...'
-        print 'id:', contact_id
-        print 'etag:', contact_etag
-        data = {'alias': 'modified test'}
-        headers = {'If-Match': contact_etag}
-        response = backend.patch('/'.join(['contact', contact_id]), data=data, headers=headers)
-        print 'response:', response
-        assert_true(response['_status'] == 'OK')
-
-        response = backend.get('/'.join(['contact', contact_id]))
-        print 'response:', response
-        assert_true(response['alias'] == 'modified test')
-
-        print 'changing contact alias ... bad _etag (inception = True)'
-        print 'id:', contact_id
-        print 'etag:', contact_etag
-        data = {'alias': 'modified test again'}
-        headers = {'If-Match': contact_etag}
-        response = backend.patch('/'.join(['contact', contact_id]), data=data, headers=headers, inception=True)
-        print 'response:', response
-        assert_true(response['_status'] == 'OK')
-
-        response = backend.get('/'.join(['contact', contact_id]))
-        print 'response:', response
-        assert_true(response['alias'] == 'modified test again')
-
-        print 'changing contact unknown field ... must be refused'
-        print 'id:', contact_id
-        print 'etag:', contact_etag
-        with assert_raises(BackendException) as cm:
-            data = {'bad_field': 'bad field name ... unknown in data model'}
-            headers = {'If-Match': contact_etag}
-            response = backend.patch('/'.join(['contact', contact_id]), data=data, headers=headers, inception=True)
-        ex = cm.exception
-        print 'exception:', str(ex.code), ex.message, ex.response
-        if "_issues" in ex.response:
-            for issue in ex.response["_issues"]:
-                print "Issue: %s - %s" %(issue, ex.response["_issues"][issue])
-        assert_true(ex.code == 422)
-        assert_true(ex.response["_issues"])
-
-        print 'changing contact alias ... bad _etag (inception = False)'
-        print 'id:', contact_id
-        print 'etag:', contact_etag
-        with assert_raises(BackendException) as cm:
-            data = {'alias': 'modified test again and again'}
-            headers = {'If-Match': contact_etag}
-            response = backend.patch('/'.join(['contact', contact_id]), data=data, headers=headers)
-        ex = cm.exception
-        print 'exception:', str(ex.code)
-        assert_true(ex.code == 412, str(ex))
-
-        response = backend.get('/'.join(['contact', contact_id]))
-        print 'response:', response
-        # Not changed !
-        assert_true(response['alias'] == 'modified test again')
-
-        response = backend.get('/'.join(['contact', contact_id]))
-        print 'response:', response
-        # Not changed !
-        assert_true(response['alias'] == 'modified test again')
-
-        print 'deleting contact ... bad href'
-        with assert_raises(BackendException) as cm:
-            headers = { 'If-Match': item['_etag'] }
-            response = backend.delete('/'.join(['contact', '5'+item['_id']]), headers)
-            print "Response:", response
-        ex = cm.exception
-        print 'exception:', str(ex.code)
-        assert_true(ex.code == 1003, str(ex))
-
-    def test_2_post_patch_delete(self):
-        global backend_address
-
-        print ''
-        print 'post/delete/patch some hostgroups'
-
-        # Create client API
-        backend = Backend(backend_address)
-
-        print 'Login ...'
-        print 'authenticated:', backend.authenticated
-        assert backend.login('admin', 'admin')
-        print 'authenticated:', backend.authenticated
-        print 'token:', backend.token
-        assert_true(backend.authenticated)
-
-        # Get all hostgroups
-        print 'get all hostgroups at once'
-        items = backend.get_all('hostgroup')
-        assert_true('_items' in items)
-        print "Got %d hostgroups: %s" % (len(items['_items']), items['_items'])
-        assert_true(len(items['_items']) == 0)  # None!
-
-        # Create a new hostgroup, bad parameters
-        print 'create a hostgroup, missing fields'
-        # Mandatory field hostgroup_name is missing ...
-        data = {
-            "name": "Testing hostgroup",
-            "alias": "Fred",
-            "back_role_super_admin": False,
-            "back_role_admin": [],
-            "min_business_impact": 0,
-        }
-        with assert_raises(BackendException) as cm:
-            response = backend.post('hostgroup', data=data)
-        ex = cm.exception
-        print 'exception:', str(ex.code), ex.message, ex.response
-        if "_issues" in ex.response:
-            for issue in ex.response["_issues"]:
-                print "Issue: %s - %s" %(issue, ex.response["_issues"][issue])
-        assert_true(ex.code == 422)
-        assert_true(ex.response["_issues"])
-
-        # Create a new hostgroup
-        print 'create a hostgroup'
-        data = {
-            "hostgroup_name": "test",
-            "name": "Testing hostgroup",
-            "alias": "Fred",
-            "note": "Hostgroup note ...",
-            "realm": "all"
-        }
-        response = backend.post('hostgroup', data=data)
-        print "Response:", response
-        assert_true('_created' in response)
-        assert_true('_updated' in response)
-        assert_true(response['_created'] == response['_updated'])
-
-        # Get all hostgroups
-        print 'get all hostgroups at once'
-        # Filter the templates ...
-        items = backend.get_all('hostgroup')
-        assert_true('_items' in items)
-        print "Got %d hostgroups: %s" % (len(items['_items']), items['_items'])
-        assert_true(len(items['_items']) == 1)  # One !
-        # Search test hostgroup
-        hostgroup_id = ''
-        hostgroup_etag = ''
-        for item in items['_items']:
-            assert_true('hostgroup_name' in item)
-            print "hostgroup: ", item['hostgroup_name']
-            if item['hostgroup_name'] == 'test':
-                hostgroup_id = item['_id']
-                hostgroup_etag = item['_etag']
-        assert_true(hostgroup_id != '')
-        assert_true(hostgroup_etag != '')
-
-        print 'changing hostgroup alias ... no _etag'
-        print 'id:', hostgroup_id
-        print 'etag:', hostgroup_etag
-        with assert_raises(BackendException) as cm:
-            data = {'alias': 'modified with no header'}
-            # headers['If-Match'] = hostgroup_etag
-            response = backend.patch('/'.join(['hostgroup', hostgroup_id]), data=data)
-        ex = cm.exception
-        print 'exception:', str(ex.code)
-        assert_true(ex.code == 1005, str(ex))
-
-        print 'changing hostgroup alias ...'
-        print 'id:', hostgroup_id
-        print 'etag:', hostgroup_etag
-        data = {'alias': 'modified test'}
-        headers = {'If-Match': hostgroup_etag}
-        response = backend.patch('/'.join(['hostgroup', hostgroup_id]), data=data, headers=headers)
-        print 'response:', response
-        assert_true(response['_status'] == 'OK')
-
-        response = backend.get('/'.join(['hostgroup', hostgroup_id]))
-        print 'response:', response
-        assert_true(response['alias'] == 'modified test')
-
-        print 'changing hostgroup alias ... bad _etag (inception = True)'
-        print 'id:', hostgroup_id
-        print 'etag:', hostgroup_etag
-        data = {'alias': 'modified test again'}
-        headers = {'If-Match': hostgroup_etag}
-        response = backend.patch('/'.join(['hostgroup', hostgroup_id]), data=data, headers=headers, inception=True)
-        print 'response:', response
-        assert_true(response['_status'] == 'OK')
-
-        response = backend.get('/'.join(['hostgroup', hostgroup_id]))
-        print 'response:', response
-        assert_true(response['alias'] == 'modified test again')
-
-        print 'changing hostgroup alias ... bad _etag (inception = False)'
-        print 'id:', hostgroup_id
-        print 'etag:', hostgroup_etag
-        with assert_raises(BackendException) as cm:
-            data = {'alias': 'modified test again and again'}
-            headers = {'If-Match': hostgroup_etag}
-            response = backend.patch('/'.join(['hostgroup', hostgroup_id]), data=data, headers=headers)
-        ex = cm.exception
-        print 'exception:', str(ex.code)
-        assert_true(ex.code == 412, str(ex))
-
-        response = backend.get('/'.join(['hostgroup', hostgroup_id]))
-        print 'response:', response
-        # Not changed !
-        assert_true(response['alias'] == 'modified test again')
-
-        response = backend.get('/'.join(['hostgroup', hostgroup_id]))
-        print 'response:', response
-        # Not changed !
-        assert_true(response['alias'] == 'modified test again')
-
-        print 'deleting hostgroup ... bad href'
-        with assert_raises(BackendException) as cm:
-            headers = { 'If-Match': item['_etag'] }
-            response = backend.delete('/'.join(['hostgroup', '5'+item['_id']]), headers)
-            print "Response:", response
-        ex = cm.exception
-        print 'exception:', str(ex.code)
-        assert_true(ex.code == 1003, str(ex))
