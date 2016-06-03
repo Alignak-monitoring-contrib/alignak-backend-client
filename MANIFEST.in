@@ -1,2 +1,0 @@
-include README.rst LICENSE AUTHORS ChangeLog requirements.txt
-recursive-include alignak_backend_client *.py

@@ -23,7 +23,7 @@ script:
   - cd test
   - coverage erase
   # - nosetests -xv --nologcapture --process-restartworker --processes=1 --process-timeout=300
-  - nosetests -xv --nologcapture --process-restartworker --processes=1 --process-timeout=300 --with-coverage --cover-package=alignak_backend_client
+  - nosetests -xv --nologcapture --process-restartworker --processes=1 --process-timeout=300 --with-coverage --cover-package=alignak_backend_client test*.py
   - coverage combine
   - coverage report -m
   - cd ..
