@@ -29,6 +29,9 @@ import subprocess
 from nose import with_setup # optional
 from nose.tools import *
 
+from alignak_backend_import import __version__
+print "Alignak backend import version: ", __version__
+
 pid = None
 backend_address = "http://localhost:5000"
 
@@ -54,12 +57,10 @@ def setup_module(module):
     time.sleep(2)
 
     print ("populate backend content")
-    fh = open("NUL","w")
     pid2 = subprocess.Popen(
-        shlex.split('cfg_to_backend --verbose --delete cfg/test_default/main.cfg')
+        shlex.split('alignak_backend_import --verbose --delete cfg/test_default/main.cfg')
     )
     pid2.communicate()
-    fh.close()
 
     # Stop and start backend to make sure that it is restarted after its content deletion...
     pid.kill()
@@ -67,7 +68,6 @@ def setup_module(module):
         shlex.split('alignak_backend')
     )
     time.sleep(2)
-    assert False
 
 def teardown_module(module):
     print ("")

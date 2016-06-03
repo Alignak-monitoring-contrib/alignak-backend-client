@@ -11,27 +11,25 @@ services:
 # command to install dependencies
 # some are only used for travis/coveralls so we are installing them here only
 install:
-  - # Force python-dateutil version because flask-apscheduler requires this version !
-  - pip install python-dateutil==2.4.2
-  - bash test/setup_test.sh
+  - ./test/setup_test.sh
 # command to run tests
 # notice: the nose-cov is used because it is compatible with --processes, but produce a .coverage by process
 # so we must combine them in the end
 script:
-  - cd test
   - pip freeze  # so to help eventual debug: know what exact versions are in use can be rather useful.
-  - nosetests -xv --process-restartworker --processes=1 --process-timeout=300  --with-coverage --cover-package=alignak_backend_client test*.py
+  - pep8 --max-line-length=100 --exclude='*.pyc, *.cfg, *.log' --ignore='E402' alignak_backend_client/*
+  - pylint --rcfile=.pylintrc alignak_backend_client/*
+  - pep257 --select=D300 alignak_backend_client
+  - cd test
+  - coverage erase
+  # - nosetests -xv --nologcapture --process-restartworker --processes=1 --process-timeout=300
+  - nosetests -xv --nologcapture --process-restartworker --processes=1 --process-timeout=300 --with-coverage --cover-package=alignak_backend_client
   - coverage combine
   - coverage report -m
   - cd ..
-  - pep8 --max-line-length=100 --exclude='*.pyc' alignak_backend_client/*
-  - pylint --rcfile=.pylintrc alignak_backend_client/*
-  - pep257 --select=D300 alignak_backend_client
 # specific call to launch coverage data into coveralls.io
 after_success:
   # to get coverage data with relative paths and not absolute we have to
   # execute coveralls from the base directory of the project,
   # so we need to move the .coverage file here :
   mv test/.coverage . && coveralls --rcfile=test/.coveragerc -v
-
-

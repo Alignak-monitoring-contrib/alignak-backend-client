@@ -29,6 +29,9 @@ import subprocess
 from nose import with_setup # optional
 from nose.tools import *
 
+from alignak_backend_import import __version__
+print "Alignak backend import version: ", __version__
+
 pid = None
 backend_address = "http://localhost:5000"
 
