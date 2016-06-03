@@ -10,7 +10,7 @@ BackendException class
 
 This specific exception is raised by the module when an error is encountered.
 
-.. autoclass:: BackendException
+.. autoexception:: BackendException
     :members:
     :undoc-members:
     :show-inheritance:
