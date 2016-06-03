@@ -6,7 +6,13 @@
 Alignak backend client's documentation
 ==================================================
 
-Contents:
+Project version:
+--------------------------------------------------
+
+Main version: |version|, release: |release|
+
+Documentation content:
+--------------------------------------------------
 
 .. toctree::
    :maxdepth: 2
