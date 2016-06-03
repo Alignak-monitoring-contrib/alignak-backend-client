@@ -3,7 +3,9 @@
 
 
 """
-Alignak REST backend
+    Alignak REST backend client library
+
+    This module is a Python library used the REST API of the Alignak backend
 """
 # Application manifest
 VERSION = (0, 4, 0)

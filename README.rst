@@ -12,6 +12,10 @@ Build status (stable release)
 .. image:: https://coveralls.io/repos/Alignak-monitoring-contrib/alignak-backend-client/badge.svg?branch=master&service=github
   :target: https://coveralls.io/github/Alignak-monitoring-contrib/alignak-backend-client?branch=master
 
+.. image:: https://readthedocs.org/projects/alignak-backend-client/badge/?version=latest
+  :target: http://alignak-backend-client.readthedocs.org/en/latest/?badge=latest
+  :alt: Documentation Status
+
 
 Build status (development release)
 ----------------------------------------
@@ -22,6 +26,9 @@ Build status (development release)
 .. image:: https://coveralls.io/repos/Alignak-monitoring-contrib/alignak-backend-client/badge.svg?branch=develop&service=github
   :target: https://coveralls.io/github/Alignak-monitoring-contrib/alignak-backend-client?branch=develop
 
+.. image:: https://readthedocs.org/projects/alignak-backend-client/badge/?version=develop
+  :target: http://alignak-backend-client.readthedocs.org/en/develop/?badge=develop
+  :alt: Documentation Status
 
 
 Documentation

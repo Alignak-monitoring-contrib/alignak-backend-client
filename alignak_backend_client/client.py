@@ -19,7 +19,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with AlignakBackend.  If not, see <http://www.gnu.org/licenses/>.
 """
-    This module is a wrapper to get, post, patch, delete with the REST applications backend
+    Alignak backend client.
+
+    This module is a wrapper library to use the REST API of the Alignak backend
 """
 import json
 import traceback
@@ -45,8 +47,12 @@ BACKEND_PAGINATION_DEFAULT = 25
 
 
 class BackendException(Exception):
-    """Specific backend exception
+    """
+    Specific backend exception class.
+    This exception provides an error code, an error message and the backend response.
+
     Defined error codes:
+
     - 1000: general exception, message contains more information
     - 1001: backend access denied
     - 1002: backend connection timeout
@@ -57,6 +63,7 @@ class BackendException(Exception):
     def __init__(self, code, message, response=None):
         # Call the base class constructor with the parameters it needs
         super(BackendException, self).__init__(message)
+
         self.code = code
         self.message = message
         self.response = response
@@ -68,7 +75,10 @@ class BackendException(Exception):
 
 class Backend(object):
     """
-    Backend class to communicate with an Eve REST backend
+    Backend client class to communicate with an Alignak backend
+
+    Provide the backend endpoint URL to initialize the client (eg. http://127.0.0.1:5000)
+
     """
     def __init__(self, endpoint):
         """
@@ -216,12 +226,14 @@ class Backend(object):
 
         If connection is successfull, returns a list of all the resources available in the backend:
         Each resource is identified with its title and provides its endpoint relative to backend
-        root endpoint.
+        root endpoint.::
+
             [
                 {u'href': u'loghost', u'title': u'loghost'},
                 {u'href': u'escalation', u'title': u'escalation'},
                 ...
             ]
+
 
         If an error occurs a BackendException is raised.
 
@@ -251,13 +263,14 @@ class Backend(object):
 
         If an error occurs, a BackendException is raised.
 
-        This method builds a response that always contains: _items and _status
-        {
-            u'_items': [
-                ...
-            ],
-            u'_status': u'OK'
-        }
+        This method builds a response that always contains: _items and _status::
+
+            {
+                u'_items': [
+                    ...
+                ],
+                u'_status': u'OK'
+            }
 
         :param endpoint: endpoint (API URL) relative from root endpoint
         :type endpoint: str
@@ -316,13 +329,14 @@ class Backend(object):
         If the max_results parameter is not specified in parameters, it is set to
         BACKEND_PAGINATION_LIMIT (backend maximum value) to limit requests number.
 
-        This method builds a response that always contains: _items and _status
-        {
-            u'_items': [
-                ...
-            ],
-            u'_status': u'OK'
-        }
+        This method builds a response that always contains: _items and _status::
+
+            {
+                u'_items': [
+                    ...
+                ],
+                u'_status': u'OK'
+            }
 
         :param endpoint: endpoint (API URL) relative from root endpoint
         :type endpoint: str
