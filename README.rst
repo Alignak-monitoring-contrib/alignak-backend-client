@@ -34,7 +34,9 @@ Build status (development release)
 Documentation
 ----------------------------------------
 
-The Backend class is commented.
+The Backend class is commented and a doc is automatically built from the source code. Click on the
+docs badge on this page to browse the doucmentation.
+
 
 
 Bugs, issues and contributing
