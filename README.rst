@@ -42,7 +42,7 @@ docs badge on this page to browse the doucmentation.
 Bugs, issues and contributing
 ----------------------------------------
 
-Please report any issue using the project GitHub repository: <https://github.com/Alignak-monitoring-contrib/alignak-backend-client/issues>`_.
+Please report any issue using the project `GitHub repository: <https://github.com/Alignak-monitoring-contrib/alignak-backend-client/issues>`_.
 
 
 License
