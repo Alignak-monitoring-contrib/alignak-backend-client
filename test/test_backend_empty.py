@@ -236,7 +236,7 @@ class test_0_login_logout(unittest2.TestCase):
         print 'post data ... must be refused!'
         with assert_raises(BackendException) as cm:
             data = { 'fake': 'fake' }
-            response = backend.post('contact', data=data)
+            response = backend.post('user', data=data)
         ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1001, str(ex))
@@ -245,7 +245,7 @@ class test_0_login_logout(unittest2.TestCase):
         with assert_raises(BackendException) as cm:
             data = { 'fake': 'fake' }
             headers = { 'If-Match': '' }
-            response = backend.patch('contact', data=data, headers=headers)
+            response = backend.patch('user', data=data, headers=headers)
         ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1001, str(ex))
@@ -254,7 +254,7 @@ class test_0_login_logout(unittest2.TestCase):
         with assert_raises(BackendException) as cm:
             data = { 'fake': 'fake' }
             headers = { 'If-Match': '' }
-            response = backend.delete('contact', headers=headers)
+            response = backend.delete('user', headers=headers)
         ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1001, str(ex))
@@ -284,7 +284,7 @@ class test_1_get(unittest2.TestCase):
         items = backend.get_domains()
         print "Got %d elements: %s" % (len(items), items)
         assert_true('_items' not in items)
-        assert_true(len(items) == 25)
+        assert_true(len(items) == 26)
         for item in items:
             assert_true('href' in item)
             assert_true('title' in item)
@@ -304,12 +304,12 @@ class test_1_get(unittest2.TestCase):
         print "Got %d elements: %s" % (len(items['_items']), items['_items'])
         assert_true(len(items['_items']) == 0)
 
-        # Get all contacts
-        print 'get all contacts at once'
-        items = backend.get_all('contact', params={})
+        # Get all users
+        print 'get all users at once'
+        items = backend.get_all('user', params={})
         assert_true('_items' in items)
         print "Got %d elements: %s" % (len(items['_items']), items['_items'])
-        assert_true(len(items['_items']) == 1)  # One contact exists in the contact ... admin!
+        assert_true(len(items['_items']) == 1)  # One user exists in the user ... admin!
         for item in items['_items']:
             assert_true('name' in item)
             print "Contact: ", item['name']
@@ -339,8 +339,8 @@ class test_1_get(unittest2.TestCase):
         assert_true('_items' not in items)
         assert_true(len(items) > 0)
         for item in items:
-            # livesynthesis and contact must contain one item
-            if item['href'] in ['realm', 'livesynthesis', 'contact', 'timeperiod']:
+            # livesynthesis and user must contain one item
+            if item['href'] in ['realm', 'livesynthesis', 'user', 'timeperiod']:
                 continue
             assert_true('href' in item)
             assert_true('title' in item)
@@ -361,7 +361,7 @@ class test_1_get(unittest2.TestCase):
         assert_true('_items' not in items)
         assert_true(len(items) > 0)
         for item in items:
-            if item['href'] not in ['realm', 'livesynthesis', 'contact', 'timeperiod']:
+            if item['href'] not in ['realm', 'livesynthesis', 'user', 'timeperiod']:
                 continue
             assert_true('href' in item)
             assert_true('title' in item)
@@ -492,13 +492,13 @@ class test_2_update(unittest2.TestCase):
         assert_true(len(items['_items']) == 1)  # Exactly one realm ...
         realm_id = items['_items'][0]['_id']
 
-        # Get all contacts
-        print 'get all contacts at once'
+        # Get all users
+        print 'get all users at once'
         parameters = {}
-        items = backend.get_all('contact', params=parameters)
+        items = backend.get_all('user', params=parameters)
         assert_true('_items' in items)
-        print "Got %d contacts: %s" % (len(items['_items']), items['_items'])
-        assert_true(len(items['_items']) == 1)  # Exactly one contact ...
+        print "Got %d users: %s" % (len(items['_items']), items['_items'])
+        assert_true(len(items['_items']) == 1)  # Exactly one user ...
         for item in items['_items']:
             print "Contact: ", item
 
@@ -547,18 +547,18 @@ class test_2_update(unittest2.TestCase):
 
         assert_true(tp_id != '')
 
-        # Create a new contact, bad parameters
-        print 'create a contact, missing fields'
-        # Mandatory field contact_name is missing ...
+        # Create a new user, bad parameters
+        print 'create a user, missing fields'
+        # Mandatory field user_name is missing ...
         data = {
-            "name": "Testing contact",
+            "name": "Testing user",
             "alias": "Fred",
             "back_role_super_admin": False,
             "back_role_admin": [],
             "min_business_impact": 0,
         }
         with assert_raises(BackendException) as cm:
-            response = backend.post('contact', data=data)
+            response = backend.post('user', data=data)
         ex = cm.exception
         print 'exception:', str(ex.code), ex.message, ex.response
         if "_issues" in ex.response:
@@ -567,11 +567,11 @@ class test_2_update(unittest2.TestCase):
         assert_true(ex.code == 422)
         assert_true(ex.response["_issues"])
 
-        # Create a new contact
-        print 'create a contact'
+        # Create a new user
+        print 'create a user'
         data = {
             "name": "test",
-            "alias": "Testing contact",
+            "alias": "Testing user",
             "min_business_impact": 0,
             "email": "frederic.mohier@gmail.com",
 
@@ -598,9 +598,7 @@ class test_2_update(unittest2.TestCase):
                 "c",
                 "r"
             ],
-            "retain_status_information": False,
             "note": "Monitoring template : default",
-            "retain_nonstatus_information": False,
             "definition_order": 100,
             "address1": "",
             "address2": "",
@@ -612,75 +610,75 @@ class test_2_update(unittest2.TestCase):
             "notificationways": [],
             "_realm": realm_id
         }
-        response = backend.post('contact', data=data)
+        response = backend.post('user', data=data)
         print "Response:", response
         assert_true('_created' in response)
         assert_true('_updated' in response)
         assert_true(response['_created'] == response['_updated'])
 
-        # Get all contacts
-        print 'get all contacts at once'
+        # Get all users
+        print 'get all users at once'
         # Filter the templates ...
-        items = backend.get_all('contact', params={})
+        items = backend.get_all('user', params={})
         assert_true('_items' in items)
-        print "Got %d contacts: %s" % (len(items['_items']), items['_items'])
+        print "Got %d users: %s" % (len(items['_items']), items['_items'])
         assert_true(len(items['_items']) == 2)  # Two !
-        # Search test contact
-        contact_id = ''
-        contact_etag = ''
+        # Search test user
+        user_id = ''
+        user_etag = ''
         for item in items['_items']:
             assert_true('name' in item)
             print "Contact: ", item['name']
             if item['name'] == 'test':
-                contact_id = item['_id']
-                contact_etag = item['_etag']
-        assert_true(contact_id != '')
-        assert_true(contact_etag != '')
+                user_id = item['_id']
+                user_etag = item['_etag']
+        assert_true(user_id != '')
+        assert_true(user_etag != '')
 
-        print 'changing contact alias ... no _etag'
-        print 'id:', contact_id
-        print 'etag:', contact_etag
+        print 'changing user alias ... no _etag'
+        print 'id:', user_id
+        print 'etag:', user_etag
         with assert_raises(BackendException) as cm:
             data = {'alias': 'modified with no header'}
-            # headers['If-Match'] = contact_etag
-            response = backend.patch('/'.join(['contact', contact_id]), data=data)
+            # headers['If-Match'] = user_etag
+            response = backend.patch('/'.join(['user', user_id]), data=data)
         ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1005, str(ex))
 
-        print 'changing contact alias ...'
-        print 'id:', contact_id
-        print 'etag:', contact_etag
+        print 'changing user alias ...'
+        print 'id:', user_id
+        print 'etag:', user_etag
         data = {'alias': 'modified test'}
-        headers = {'If-Match': contact_etag}
-        response = backend.patch('/'.join(['contact', contact_id]), data=data, headers=headers)
+        headers = {'If-Match': user_etag}
+        response = backend.patch('/'.join(['user', user_id]), data=data, headers=headers)
         print 'response:', response
         assert_true(response['_status'] == 'OK')
 
-        response = backend.get('/'.join(['contact', contact_id]))
+        response = backend.get('/'.join(['user', user_id]))
         print 'response:', response
         assert_true(response['alias'] == 'modified test')
 
-        print 'changing contact alias ... bad _etag (inception = True)'
-        print 'id:', contact_id
-        print 'etag:', contact_etag
+        print 'changing user alias ... bad _etag (inception = True)'
+        print 'id:', user_id
+        print 'etag:', user_etag
         data = {'alias': 'modified test again'}
-        headers = {'If-Match': contact_etag}
-        response = backend.patch('/'.join(['contact', contact_id]), data=data, headers=headers, inception=True)
+        headers = {'If-Match': user_etag}
+        response = backend.patch('/'.join(['user', user_id]), data=data, headers=headers, inception=True)
         print 'response:', response
         assert_true(response['_status'] == 'OK')
 
-        response = backend.get('/'.join(['contact', contact_id]))
+        response = backend.get('/'.join(['user', user_id]))
         print 'response:', response
         assert_true(response['alias'] == 'modified test again')
 
-        print 'changing contact unknown field ... must be refused'
-        print 'id:', contact_id
-        print 'etag:', contact_etag
+        print 'changing user unknown field ... must be refused'
+        print 'id:', user_id
+        print 'etag:', user_etag
         with assert_raises(BackendException) as cm:
             data = {'bad_field': 'bad field name ... unknown in data model'}
-            headers = {'If-Match': contact_etag}
-            response = backend.patch('/'.join(['contact', contact_id]), data=data, headers=headers, inception=True)
+            headers = {'If-Match': user_etag}
+            response = backend.patch('/'.join(['user', user_id]), data=data, headers=headers, inception=True)
         ex = cm.exception
         print 'exception:', str(ex.code), ex.message, ex.response
         if "_issues" in ex.response:
@@ -689,31 +687,31 @@ class test_2_update(unittest2.TestCase):
         assert_true(ex.code == 422)
         assert_true(ex.response["_issues"])
 
-        print 'changing contact alias ... bad _etag (inception = False)'
-        print 'id:', contact_id
-        print 'etag:', contact_etag
+        print 'changing user alias ... bad _etag (inception = False)'
+        print 'id:', user_id
+        print 'etag:', user_etag
         with assert_raises(BackendException) as cm:
             data = {'alias': 'modified test again and again'}
-            headers = {'If-Match': contact_etag}
-            response = backend.patch('/'.join(['contact', contact_id]), data=data, headers=headers)
+            headers = {'If-Match': user_etag}
+            response = backend.patch('/'.join(['user', user_id]), data=data, headers=headers)
         ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 412, str(ex))
 
-        response = backend.get('/'.join(['contact', contact_id]))
+        response = backend.get('/'.join(['user', user_id]))
         print 'response:', response
         # Not changed !
         assert_true(response['alias'] == 'modified test again')
 
-        response = backend.get('/'.join(['contact', contact_id]))
+        response = backend.get('/'.join(['user', user_id]))
         print 'response:', response
         # Not changed !
         assert_true(response['alias'] == 'modified test again')
 
-        print 'deleting contact ... bad href'
+        print 'deleting user ... bad href'
         with assert_raises(BackendException) as cm:
             headers = { 'If-Match': item['_etag'] }
-            response = backend.delete('/'.join(['contact', '5'+item['_id']]), headers)
+            response = backend.delete('/'.join(['user', '5'+item['_id']]), headers)
             print "Response:", response
         ex = cm.exception
         print 'exception:', str(ex.code)

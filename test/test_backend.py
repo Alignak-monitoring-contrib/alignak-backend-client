@@ -236,7 +236,7 @@ class test_0_login_logout(unittest2.TestCase):
         print 'post data ... must be refused!'
         with assert_raises(BackendException) as cm:
             data = { 'fake': 'fake' }
-            response = backend.post('contact', data=data)
+            response = backend.post('user', data=data)
         ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1001, str(ex))
@@ -245,7 +245,7 @@ class test_0_login_logout(unittest2.TestCase):
         with assert_raises(BackendException) as cm:
             data = { 'fake': 'fake' }
             headers = { 'If-Match': '' }
-            response = backend.patch('contact', data=data, headers=headers)
+            response = backend.patch('user', data=data, headers=headers)
         ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1001, str(ex))
@@ -254,7 +254,7 @@ class test_0_login_logout(unittest2.TestCase):
         with assert_raises(BackendException) as cm:
             data = { 'fake': 'fake' }
             headers = { 'If-Match': '' }
-            response = backend.delete('contact', headers=headers)
+            response = backend.delete('user', headers=headers)
         ex = cm.exception
         print 'exception:', str(ex.code)
         assert_true(ex.code == 1001, str(ex))
@@ -284,16 +284,16 @@ class test_1_get(unittest2.TestCase):
         items = backend.get_domains()
         print "Got %d elements: %s" % (len(items), items)
         assert_true('_items' not in items)
-        assert_true(len(items) == 25)
+        assert_true(len(items) == 26)
         for item in items:
             assert_true('href' in item)
             assert_true('title' in item)
             print "Domain: ", item
 
-        # Get all contacts
-        print 'get all contacts at once'
+        # Get all users
+        print 'get all users at once'
         parameters = {}
-        items = backend.get_all('contact', params=parameters)
+        items = backend.get_all('user', params=parameters)
         assert_true('_items' in items)
         items = items['_items']
         print "Got %d elements: %s" % (len(items), items)
