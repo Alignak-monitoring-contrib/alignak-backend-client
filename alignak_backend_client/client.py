@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #
-# Copyright (C) 2015-2015: AlignakBackend team, see AUTHORS.txt file for contributors
+# Copyright (C) 2015-2016: AlignakBackend team, see AUTHORS.txt file for contributors
 #
 # This file is part of AlignakBackend.
 #
@@ -27,7 +27,7 @@ import json
 import traceback
 from logging import getLogger, DEBUG, WARNING
 
-from urlparse import urljoin
+from future.moves.urllib.parse import urljoin
 
 import requests
 from requests import Timeout, HTTPError
