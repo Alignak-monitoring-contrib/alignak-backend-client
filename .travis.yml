@@ -1,9 +1,8 @@
 language: python
 sudo: true
 python:
-  # - "2.6"
   - "2.7"
-  # - "3.4"
+  - "3.4"
 
 services:
   - mongodb
@@ -18,6 +17,7 @@ install:
 script:
   - pip freeze  # so to help eventual debug: know what exact versions are in use can be rather useful.
   - pep8 --max-line-length=100 --exclude='*.pyc, *.cfg, *.log' --ignore='E402' alignak_backend_client/*
+  - rm -fr alignak_backend_client/__pycache__
   - pylint --rcfile=.pylintrc alignak_backend_client/*
   - pep257 --select=D300 alignak_backend_client
   - cd test
@@ -26,6 +26,8 @@ script:
   - nosetests -xv --nologcapture --process-restartworker --processes=1 --process-timeout=300 --with-coverage --cover-package=alignak_backend_client test*.py
   - coverage combine
   - coverage report -m
+  - pep8 --max-line-length=100 --ignore='E402' test_*.py
+  - pylint --rcfile=../.pylintrc test_*.py
   - cd ..
 # specific call to launch coverage data into coveralls.io
 after_success:
