@@ -27,10 +27,10 @@ import json
 import traceback
 from logging import getLogger, DEBUG, WARNING
 
-from future.moves.urllib.parse import urljoin
-
 import math
 import multiprocessing
+
+from future.moves.urllib.parse import urljoin
 
 import requests
 from requests import Timeout, HTTPError
