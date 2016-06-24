@@ -12,6 +12,7 @@ import subprocess
 import unittest2
 from alignak_backend_client.client import Backend, BackendException
 
+
 class test_multiprocess(unittest2.TestCase):
     """
     test multiprocess to get items in backend
