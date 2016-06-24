@@ -8,5 +8,6 @@ nose
 pylint
 pep8
 pep257
+uwsgi
 # alignak_backend
 -e git+git://github.com/Alignak-monitoring-contrib/alignak-backend.git@develop#egg=alignak_backend

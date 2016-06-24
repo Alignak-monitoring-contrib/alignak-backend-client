@@ -27,6 +27,9 @@ import json
 import traceback
 from logging import getLogger, DEBUG, WARNING
 
+import math
+import multiprocessing
+
 from future.moves.urllib.parse import urljoin
 
 import requests
@@ -80,7 +83,7 @@ class Backend(object):
     Provide the backend endpoint URL to initialize the client (eg. http://127.0.0.1:5000)
 
     """
-    def __init__(self, endpoint):
+    def __init__(self, endpoint, processes=1):
         """
         Initialize a client connection
 
@@ -89,6 +92,7 @@ class Backend(object):
         """
         self.connected = False
         self.authenticated = False
+        self.processes = processes
         if endpoint.endswith('/'):  # pragma: no cover - test url is complying ...
             self.url_endpoint_root = endpoint[0:-1]
         else:
@@ -360,27 +364,75 @@ class Backend(object):
         # Get first page
         last_page = False
         items = []
-        while not last_page:
-            # Get elements ...
+        if self.processes == 1:
+            while not last_page:
+                # Get elements ...
+                resp = self.get(endpoint, params)
+                # Response contains:
+                # _items:
+                # ...
+                # _links:
+                #  self, parent, prev, last, next
+                # _meta:
+                # - max_results, total, page
+
+                if 'next' in resp['_links']:
+                    # Go to next page ...
+                    params['page'] = int(resp['_meta']['page']) + 1
+                    params['max_results'] = int(resp['_meta']['max_results'])
+                else:
+                    last_page = True
+                items.extend(resp['_items'])
+        else:
+            def get_pages(endpoint, params, pages, out_q):
+                """
+                Function to get pages loaded by multiprocesses
+
+                :param endpoint: endpoint to get data
+                :type endpoint: string
+                :param params: parameters for get request
+                :type params: dict
+                :param pages: range of pages to get
+                :type pages: list
+                :param out_q: Queue object
+                :type out_q: object
+                :return: None
+                """
+                multi_items = []
+                for page in pages:
+                    params['page'] = page
+                    resp = self.get(endpoint, params)
+                    multi_items.extend(resp['_items'])
+                out_q.put(multi_items)
+
+            # Get first page
             resp = self.get(endpoint, params)
-            # Response contains:
-            # _items:
-            # ...
-            # _links:
-            #  self, parent, prev, last, next
-            # _meta:
-            # - max_results, total, page
+            number_pages = int(math.ceil(
+                int(resp['_meta']['total']) / int(resp['_meta']['max_results'])))
 
-            page_number = int(resp['_meta']['page'])
-            max_results = int(resp['_meta']['max_results'])
+            out_q = multiprocessing.Queue()
+            chunksize = int(math.ceil(number_pages / float(self.processes)))
+            procs = []
+            for i in range(self.processes):
+                begin = i * chunksize
+                end = begin + chunksize
+                if end > number_pages:
+                    end = number_pages
+                begin += 1
+                end += 1
+                p = multiprocessing.Process(target=get_pages,
+                                            args=(endpoint, params, range(begin, end), out_q))
+                procs.append(p)
+                p.start()
 
-            if 'next' in resp['_links']:
-                # Go to next page ...
-                params['page'] = page_number + 1
-                params['max_results'] = max_results
-            else:
-                last_page = True
-            items.extend(resp['_items'])
+            # Collect all results into a single result dict. We know how many dicts
+            # with results to expect.
+            for i in range(self.processes):
+                items.extend(out_q.get())
+
+            # Wait for all worker processes to finish
+            for p in procs:
+                p.join()
 
         return {
             '_items': items,
