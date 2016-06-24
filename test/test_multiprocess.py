@@ -78,7 +78,7 @@ class test_multiprocess(unittest2.TestCase):
         # add 700 commands
         backend.delete("command", {})
         data = {'command_line': 'check_ping', '_realm': realm_id}
-        for i in xrange(1, 2001):
+        for i in range(1, 2001):
             data['name'] = "cmd %d" % i
             backend.post('command', data)
 

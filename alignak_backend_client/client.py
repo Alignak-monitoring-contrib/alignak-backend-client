@@ -413,7 +413,7 @@ class Backend(object):
             out_q = multiprocessing.Queue()
             chunksize = int(math.ceil(number_pages / float(self.processes)))
             procs = []
-            for i in xrange(self.processes):
+            for i in range(self.processes):
                 begin = i * chunksize
                 end = begin + chunksize
                 if end > number_pages:
@@ -421,7 +421,7 @@ class Backend(object):
                 begin += 1
                 end += 1
                 p = multiprocessing.Process(target=get_pages,
-                                            args=(endpoint, params, xrange(begin, end), out_q))
+                                            args=(endpoint, params, range(begin, end), out_q))
                 procs.append(p)
                 p.start()
 
