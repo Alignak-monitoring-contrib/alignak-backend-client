@@ -86,7 +86,7 @@ class TestLoginLogout(unittest2.TestCase):
         assert_equal(backend.token, None)
 
         print('Create client API (trailing slash is removed)')
-        backend = Backend(self.backend_address)
+        backend = Backend(self.backend_address+'/')
 
         print('object:', backend)
         print('authenticated:', backend.authenticated)
