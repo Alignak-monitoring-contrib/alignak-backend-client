@@ -35,8 +35,21 @@ Documentation
 ----------------------------------------
 
 The Backend class is commented and a doc is automatically built from the source code. Click on the
-docs badge on this page to browse the doucmentation.
+docs badge on this page to browse the documentation.
 
+
+Release strategy
+----------------------------------------
+
+Alignak backend and its *satellites* (backend client, and backend import tools) must all have the
+same features level. As of it, take care to install the same minor version on your system to
+ensure compatibility between all the packages. Use 0.4.x version of Backend import and Backend
+client with a 0.4.x version of the Backend.
+
+The current version of Alignak backend client is 0.5.0.
+
+**Note:** the current version is the same as the previous version 0.4.2. The version number has
+simply been updated to match the Alignak backend release strategy.
 
 
 Bugs, issues and contributing
