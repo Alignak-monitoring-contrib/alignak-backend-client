@@ -40,9 +40,9 @@ class test_multiprocess(unittest2.TestCase):
         )
         assert exit_code == 0
 
-        cls.pid = subprocess.Popen(['uwsgi', '-w', 'alignakbackend:app', '--socket',
-                                    '0.0.0.0:5000', '--protocol=http', '--enable-threads', '-p',
-                                    '8'])
+        cls.pid = subprocess.Popen(['uwsgi', '--plugin', 'python', '-w', 'alignakbackend:app',
+                                    '--socket', '0.0.0.0:5000', '--protocol=http',
+                                    '--enable-threads', '-p', '8'])
         time.sleep(3)
         cls.backend_address = "http://localhost:5000"
 
