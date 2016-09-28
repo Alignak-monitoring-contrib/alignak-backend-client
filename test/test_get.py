@@ -209,6 +209,6 @@ class TestGetClient(unittest2.TestCase):
         with assert_raises(BackendException) as cm:
             print('get all hostgroups at once')
             params = {'max_results': 3}
-            items = backend.get_all('hostgroup', params=params)
+            backend.get_all('hostgroup', params=params)
         ex = cm.exception
         self.assertEqual(ex.code, 1000)
