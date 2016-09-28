@@ -44,10 +44,11 @@ class TestLoginLogout(unittest2.TestCase):
         )
         assert exit_code == 0
 
-        cls.pid = subprocess.Popen(['uwsgi', '--plugin', 'python', '-w', 'alignakbackend:app',
-                                  '--socket', '0.0.0.0:5000',
-                                  '--protocol=http', '--enable-threads', '--pidfile',
-                                  '/tmp/uwsgi.pid'])
+        cls.pid = subprocess.Popen([
+            'uwsgi', '--plugin', 'python', '-w', 'alignakbackend:app',
+            '--socket', '0.0.0.0:5000', '--protocol=http', '--enable-threads', '--pidfile',
+            '/tmp/uwsgi.pid'
+        ])
         time.sleep(3)
 
     @classmethod
