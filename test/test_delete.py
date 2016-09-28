@@ -28,26 +28,25 @@ class TestDeleteClient(unittest2.TestCase):
         :param module:
         :return: None
         """
-        print("")
         print("start alignak backend")
 
         cls.backend_address = "http://localhost:5000"
 
-        # Set test mode for applications backend
-        os.environ['TEST_ALIGNAK_BACKEND'] = '1'
-        os.environ['TEST_ALIGNAK_BACKEND_DB'] = 'alignak-backend'
+        # Set DB name for tests
+        os.environ['ALIGNAK_BACKEND_MONGO_DBNAME'] = 'alignak-backend-test'
 
         # Delete used mongo DBs
         exit_code = subprocess.call(
             shlex.split(
-                'mongo %s --eval "db.dropDatabase()"' % os.environ['TEST_ALIGNAK_BACKEND_DB'])
+                'mongo %s --eval "db.dropDatabase()"' % os.environ['ALIGNAK_BACKEND_MONGO_DBNAME'])
         )
         assert exit_code == 0
 
-        cls.pid = subprocess.Popen(
-            shlex.split('alignak_backend')
-        )
-        time.sleep(2)
+        cls.pid = subprocess.Popen(['uwsgi', '--plugin', 'python', '-w', 'alignakbackend:app',
+                                  '--socket', '0.0.0.0:5000',
+                                  '--protocol=http', '--enable-threads', '--pidfile',
+                                  '/tmp/uwsgi.pid'])
+        time.sleep(3)
 
         headers = {'Content-Type': 'application/json'}
         params = {'username': 'admin', 'password': 'admin', 'action': 'generate'}
@@ -71,7 +70,6 @@ class TestDeleteClient(unittest2.TestCase):
         :param module:
         :return: None
         """
-        print("")
         print("stop alignak backend")
         cls.pid.kill()
 
@@ -139,3 +137,47 @@ class TestDeleteClient(unittest2.TestCase):
         ex = cm.exception
         print('exception:', str(ex.code))
         assert_true(ex.code == 1003, str(ex))
+
+    def test_3_delete_connection_error(self):
+        """
+        Backend connection error when deleting an object...
+
+        :return: None
+        """
+        print('test connection error when deleting an object')
+
+        # Create client API
+        backend = Backend(self.backend_address)
+        backend.login('admin', 'admin')
+
+        # Create a new timeperiod
+        data = {
+            "name": "Testing TP",
+            "alias": "Test TP",
+            "dateranges": [
+                {u'monday': u'09:00-17:00'},
+                {u'tuesday': u'09:00-17:00'},
+                {u'wednesday': u'09:00-17:00'},
+                {u'thursday': u'09:00-17:00'},
+                {u'friday': u'09:00-17:00'}
+            ],
+            "_realm": self.realmAll_id
+        }
+        response = backend.post('timeperiod', data=data)
+        assert_true(response['_status'] == 'OK')
+        timeperiod_id = response['_id']
+        timeperiod_etag = response['_etag']
+
+        headers = {'If-Match': timeperiod_etag}
+        response = backend.delete('/'.join(['timeperiod', timeperiod_id]), headers=headers)
+        assert_true(response['_status'] == 'OK')
+
+        print("stop the alignak backend")
+        self.pid.kill()
+
+        with assert_raises(BackendException) as cm:
+            headers = {'If-Match': timeperiod_etag}
+            response = backend.delete('/'.join(['timeperiod', timeperiod_id]), headers=headers)
+            assert_true(response['_status'] == 'OK')
+        ex = cm.exception
+        self.assertEqual(ex.code, 1000)

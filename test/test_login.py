@@ -12,7 +12,6 @@ import shlex
 import subprocess
 import unittest2
 
-from nose import with_setup  # optional
 from nose.tools import assert_true, assert_false, assert_equal, assert_raises
 
 from alignak_backend_client.client import Backend, BackendException
@@ -31,26 +30,25 @@ class TestLoginLogout(unittest2.TestCase):
         :param module:
         :return: None
         """
-        print("")
         print("start alignak backend")
 
         cls.backend_address = "http://localhost:5000"
 
-        # Set test mode for applications backend
-        os.environ['TEST_ALIGNAK_BACKEND'] = '1'
-        os.environ['TEST_ALIGNAK_BACKEND_DB'] = 'alignak-backend'
+        # Set DB name for tests
+        os.environ['ALIGNAK_BACKEND_MONGO_DBNAME'] = 'alignak-backend-test'
 
         # Delete used mongo DBs
         exit_code = subprocess.call(
             shlex.split(
-                'mongo %s --eval "db.dropDatabase()"' % os.environ['TEST_ALIGNAK_BACKEND_DB'])
+                'mongo %s --eval "db.dropDatabase()"' % os.environ['ALIGNAK_BACKEND_MONGO_DBNAME'])
         )
         assert exit_code == 0
 
-        cls.pid = subprocess.Popen(
-            shlex.split('alignak_backend')
-        )
-        time.sleep(2)
+        cls.pid = subprocess.Popen(['uwsgi', '--plugin', 'python', '-w', 'alignakbackend:app',
+                                  '--socket', '0.0.0.0:5000',
+                                  '--protocol=http', '--enable-threads', '--pidfile',
+                                  '/tmp/uwsgi.pid'])
+        time.sleep(3)
 
     @classmethod
     def tearDownClass(cls):
@@ -250,3 +248,38 @@ class TestLoginLogout(unittest2.TestCase):
         ex = cm.exception
         print('exception:', str(ex.code))
         assert_true(ex.code == 1001, str(ex))
+
+
+class TestLoginLogoutConnection(unittest2.TestCase):
+    """
+    Test login and logout to the backend - backend is not available
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """
+        Function used in the beginning of test to prepare the backend
+
+        :param module:
+        :return: None
+        """
+        print("Do not start alignak backend")
+
+        cls.backend_address = "http://localhost:5000"
+
+    def test_05_login(self):
+        """
+        Test with right username / password
+
+        :return: None
+        """
+        print('test connection error when login')
+
+        # Create client API
+        backend = Backend(self.backend_address)
+
+        print('Login ... must be refused!')
+        with assert_raises(BackendException) as cm:
+            backend.login('admin', 'admin')
+        ex = cm.exception
+        self.assertEqual(ex.code, 1000)

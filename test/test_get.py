@@ -28,26 +28,25 @@ class TestGetClient(unittest2.TestCase):
         :param module:
         :return: None
         """
-        print("")
         print("start alignak backend")
 
         cls.backend_address = "http://localhost:5000"
 
-        # Set test mode for applications backend
-        os.environ['TEST_ALIGNAK_BACKEND'] = '1'
-        os.environ['TEST_ALIGNAK_BACKEND_DB'] = 'alignak-backend'
+        # Set DB name for tests
+        os.environ['ALIGNAK_BACKEND_MONGO_DBNAME'] = 'alignak-backend-test'
 
         # Delete used mongo DBs
         exit_code = subprocess.call(
             shlex.split(
-                'mongo %s --eval "db.dropDatabase()"' % os.environ['TEST_ALIGNAK_BACKEND_DB'])
+                'mongo %s --eval "db.dropDatabase()"' % os.environ['ALIGNAK_BACKEND_MONGO_DBNAME'])
         )
         assert exit_code == 0
 
-        cls.pid = subprocess.Popen(
-            shlex.split('alignak_backend')
-        )
-        time.sleep(2)
+        cls.pid = subprocess.Popen(['uwsgi', '--plugin', 'python', '-w', 'alignakbackend:app',
+                                  '--socket', '0.0.0.0:5000',
+                                  '--protocol=http', '--enable-threads', '--pidfile',
+                                  '/tmp/uwsgi.pid'])
+        time.sleep(3)
 
         headers = {'Content-Type': 'application/json'}
         params = {'username': 'admin', 'password': 'admin', 'action': 'generate'}
@@ -70,6 +69,7 @@ class TestGetClient(unittest2.TestCase):
             params['name'] = 'group ' + str(num)
             response = requests.post(cls.backend_address + '/hostgroup', json=params,
                                      headers=headers, auth=cls.auth)
+            print(response.__dict__)
             assert_equal(response.status_code, 201)
 
     @classmethod
@@ -80,7 +80,6 @@ class TestGetClient(unittest2.TestCase):
         :param module:
         :return: None
         """
-        print("")
         print("stop alignak backend")
         cls.pid.kill()
 
@@ -112,7 +111,6 @@ class TestGetClient(unittest2.TestCase):
 
         :return: None
         """
-        print('')
         print('get all elements on an endpoint')
 
         # Create client API
@@ -123,8 +121,10 @@ class TestGetClient(unittest2.TestCase):
         print('get all hostgroups at once')
         params = {'max_results': 3}
         items = backend.get_all('hostgroup', params=params)
-        hosts = items['_items']
-        self.assertEqual(len(hosts), 101)
+        hostgroups = items['_items']
+        for hostgroup in hostgroups:
+            print("Group: %s" % hostgroup['name'])
+        self.assertEqual(len(hostgroups), 101)
 
     def test_3_page_after_page(self):
         """
@@ -132,7 +132,6 @@ class TestGetClient(unittest2.TestCase):
 
         :return: None
         """
-        print('')
         print('backend connection with username/password')
 
         # Create client API
@@ -190,3 +189,25 @@ class TestGetClient(unittest2.TestCase):
         print("----------")
         print("Got %d elements:" % len(items))
         assert_equal(len(items), 101)
+
+    def test_4_connection_error(self):
+        """
+        Backend connection error when getting an object...
+
+        :return: None
+        """
+        print('test connection error when getting an object')
+
+        # Create client API
+        backend = Backend(self.backend_address)
+        backend.login('admin', 'admin')
+
+        print("stop the alignak backend")
+        self.pid.kill()
+
+        with assert_raises(BackendException) as cm:
+            print('get all hostgroups at once')
+            params = {'max_results': 3}
+            items = backend.get_all('hostgroup', params=params)
+        ex = cm.exception
+        self.assertEqual(ex.code, 1000)
