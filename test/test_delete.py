@@ -152,8 +152,8 @@ class TestDeleteClient(unittest2.TestCase):
 
         # Create a new timeperiod
         data = {
-            "name": "Testing TP",
-            "alias": "Test TP",
+            "name": "Testing TP 2",
+            "alias": "Test TP 2",
             "dateranges": [
                 {u'monday': u'09:00-17:00'},
                 {u'tuesday': u'09:00-17:00'},
