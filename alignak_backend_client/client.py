@@ -33,7 +33,8 @@ import multiprocessing
 from future.moves.urllib.parse import urljoin
 
 import requests
-from requests import Timeout, HTTPError, ConnectionError
+from requests import Timeout, HTTPError
+from requests import ConnectionError as RequestsConnectionError
 from requests.auth import HTTPBasicAuth
 
 # Set logger level to WARNING, this to allow global application DEBUG logs without being spammed...
@@ -152,7 +153,7 @@ class Backend(object):
         except HTTPError as e:  # pragma: no cover - need specific backend tests
             logger.error("Backend HTTP error, error: %s", str(e))
             raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
-        except ConnectionError as e:
+        except RequestsConnectionError as e:
             logger.error("Backend connection error, error: %s", str(e))
             raise BackendException(1000, "Backend connection error")
         except Exception as e:  # pragma: no cover - security ...
@@ -218,7 +219,7 @@ class Backend(object):
         except HTTPError as e:  # pragma: no cover - need specific backend tests
             logger.error("Backend HTTP error, error: %s", str(e))
             raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
-        except ConnectionError as e:
+        except RequestsConnectionError as e:
             logger.error("Backend connection error, error: %s", str(e))
             raise BackendException(1000, "Backend connection error")
         except Exception as e:  # pragma: no cover - security ...
@@ -307,7 +308,7 @@ class Backend(object):
             logger.debug("get, response: %s", response)
             response.raise_for_status()
 
-        except ConnectionError as e:
+        except RequestsConnectionError as e:
             logger.error("Backend connection error, error: %s", str(e))
             raise BackendException(1000, "Backend connection error")
 
@@ -501,7 +502,7 @@ class Backend(object):
             logger.error("traceback: %s", traceback.format_exc())
             raise BackendException(1003, "Exception: %s" % (str(e)))
 
-        except ConnectionError as e:
+        except RequestsConnectionError as e:
             logger.error("Backend connection error, error: %s", str(e))
             raise BackendException(1000, "Backend connection error")
 
@@ -591,7 +592,7 @@ class Backend(object):
                 headers=headers,
                 auth=HTTPBasicAuth(self.token, '')
             )
-        except ConnectionError as e:
+        except RequestsConnectionError as e:
             logger.error("Backend connection error, error: %s", str(e))
             raise BackendException(1000, "Backend connection error")
 
