@@ -8,7 +8,7 @@
     This module is a Python library used the REST API of the Alignak backend
 """
 # Application version and manifest
-VERSION = (0, 5, 1)
+VERSION = (0, 5, 2)
 
 __application__ = u"Alignak Backend client"
 __short_version__ = '.'.join((str(each) for each in VERSION[:2]))
