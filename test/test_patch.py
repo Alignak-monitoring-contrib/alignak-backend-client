@@ -28,26 +28,26 @@ class TestPatchClient(unittest2.TestCase):
         :param module:
         :return: None
         """
-        print("")
         print("start alignak backend")
 
         cls.backend_address = "http://localhost:5000"
 
-        # Set test mode for applications backend
-        os.environ['TEST_ALIGNAK_BACKEND'] = '1'
-        os.environ['TEST_ALIGNAK_BACKEND_DB'] = 'alignak-backend'
+        # Set DB name for tests
+        os.environ['ALIGNAK_BACKEND_MONGO_DBNAME'] = 'alignak-backend-test'
 
         # Delete used mongo DBs
         exit_code = subprocess.call(
             shlex.split(
-                'mongo %s --eval "db.dropDatabase()"' % os.environ['TEST_ALIGNAK_BACKEND_DB'])
+                'mongo %s --eval "db.dropDatabase()"' % os.environ['ALIGNAK_BACKEND_MONGO_DBNAME'])
         )
         assert exit_code == 0
 
-        cls.pid = subprocess.Popen(
-            shlex.split('alignak_backend')
-        )
-        time.sleep(2)
+        cls.pid = subprocess.Popen([
+            'uwsgi', '--plugin', 'python', '-w', 'alignakbackend:app',
+            '--socket', '0.0.0.0:5000', '--protocol=http', '--enable-threads', '--pidfile',
+            '/tmp/uwsgi.pid'
+        ])
+        time.sleep(3)
 
         headers = {'Content-Type': 'application/json'}
         params = {'username': 'admin', 'password': 'admin', 'action': 'generate'}
@@ -71,7 +71,6 @@ class TestPatchClient(unittest2.TestCase):
         :param module:
         :return: None
         """
-        print("")
         print("stop alignak backend")
         cls.pid.kill()
 
@@ -138,3 +137,33 @@ class TestPatchClient(unittest2.TestCase):
         ex = cm.exception
         print('exception:', str(ex.code))
         assert_true(ex.code == 412, str(ex))
+
+    def test_3_patch_connection_error(self):
+        """
+        Backend connection error when updating an object...
+
+        :return: None
+        """
+        print('test connection error when updating an object')
+
+        # Create client API
+        backend = Backend(self.backend_address)
+        backend.login('admin', 'admin')
+
+        # get user admin
+        params = {"where": {"name": "admin"}}
+        response = requests.get(self.backend_address + '/user', json=params, auth=self.auth)
+        resp = response.json()
+        user_id = resp['_items'][0]['_id']
+        user_etag = resp['_items'][0]['_etag']
+
+        print("stop the alignak backend")
+        self.pid.kill()
+
+        with assert_raises(BackendException) as cm:
+            data = {'alias': 'modified test'}
+            headers = {'If-Match': user_etag}
+            response = backend.patch('/'.join(['user', user_id]), data=data, headers=headers)
+            assert_true(response['_status'] == 'OK')
+        ex = cm.exception
+        self.assertEqual(ex.code, 1000)
