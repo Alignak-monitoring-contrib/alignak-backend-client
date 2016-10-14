@@ -40,7 +40,7 @@ from requests.auth import HTTPBasicAuth
 
 logger = getLogger(__name__)
 # Check if logger has already handler to prevent override it
-if len(logger.handlers):
+if logger.handlers:
     logger.addHandler(logger.handlers)
 else:
     logging.basicConfig()
