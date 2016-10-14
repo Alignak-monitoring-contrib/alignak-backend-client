@@ -25,6 +25,7 @@
 """
 import json
 import traceback
+import logging
 from logging import getLogger, DEBUG, WARNING
 
 import math
@@ -37,8 +38,14 @@ from requests import Timeout, HTTPError
 from requests import ConnectionError as RequestsConnectionError
 from requests.auth import HTTPBasicAuth
 
-# Set logger level to WARNING, this to allow global application DEBUG logs without being spammed...
+
 logger = getLogger(__name__)
+# Check if logger has already handler to prevent override it
+if logger.handlers:
+    logger.addHandler(logger.handlers)
+else:
+    logging.basicConfig()
+# Set logger level to WARNING, this to allow global application DEBUG logs without being spammed...
 logger.setLevel(WARNING)
 
 # Disable default logs for requests and urllib3 libraries ...
