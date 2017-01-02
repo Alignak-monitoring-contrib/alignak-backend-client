@@ -3,7 +3,7 @@
 
 import os
 import sys
-del os.link
+
 from importlib import import_module
 
 try:
