@@ -10,7 +10,7 @@ import time
 import shlex
 import subprocess
 import unittest2
-from alignak_backend_client.client import Backend, BackendException
+from alignak_backend_client.client import Backend
 
 
 class test_multiprocess(unittest2.TestCase):
@@ -89,20 +89,20 @@ class test_multiprocess(unittest2.TestCase):
         start_time = time.time()
         resp = backend_yannsolo.get_all('command', {'max_results': 20})
         threads_1 = time.time() - start_time
-        self.assertEqual(len(resp['_items']), 2000, "Number of commands in non multiprocess mode")
+        self.assertEqual(len(resp['_items']), 2002, "Number of commands in non multiprocess mode")
 
         # get with multiprocess (8 processes)
         start_time = time.time()
         resp = backend.get_all('command', {'max_results': 20})
         threads_8 = time.time() - start_time
-        self.assertEqual(len(resp['_items']), 2000, "Number of commands in multiprocess mode")
+        self.assertEqual(len(resp['_items']), 2002, "Number of commands in multiprocess mode")
         ids = []
         for dat in resp['_items']:
             ids.append(dat['_id'])
-        self.assertEqual(len(ids), 2000, "Number of id")
-        # remove doubles
+        self.assertEqual(len(ids), 2002, "Number of id")
+        # remove duplicates
         ids_final = set(ids)
-        self.assertEqual(len(ids_final), 2000, "Number of id unique")
+        self.assertEqual(len(ids_final), 2002, "Number of id unique")
 
         print(threads_1)
         print(threads_8)

@@ -11,8 +11,7 @@ import shlex
 import subprocess
 import requests
 import unittest2
-from nose import with_setup  # optional
-from nose.tools import assert_true, assert_false, assert_equal, assert_raises
+from nose.tools import assert_true, assert_equal, assert_raises
 from alignak_backend_client.client import Backend, BackendException
 
 
