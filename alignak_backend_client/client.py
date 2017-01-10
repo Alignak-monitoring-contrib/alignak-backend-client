@@ -19,14 +19,24 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with AlignakBackend.  If not, see <http://www.gnu.org/licenses/>.
 """
-    Alignak backend client.
+    Alignak REST backend client library
+    ===================================
 
-    This module is a wrapper library to use the REST API of the Alignak backend
+    This module is a Python library used for connecting to an Alignak backend.
+
+    The `Backend` class implements the necessary methods to establish a connection
+    and interact with the backend REST API.
+
+    Backend interaction will necessarily start with a `login` and end with a `logout`. In
+    between, using the `get`, `post`, `patch` and `delete` functions will allow to manipulate
+    the backend elements.
+
+    The Alignak backend data model is `documented here <http://alignak-backend.readthedocs.io/>`_.
 """
 import json
 import traceback
 import logging
-from logging import getLogger, DEBUG, WARNING
+from logging import getLogger, WARNING
 
 import math
 import multiprocessing
@@ -58,9 +68,10 @@ BACKEND_PAGINATION_DEFAULT = 25
 
 
 class BackendException(Exception):
-    """
-    Specific backend exception class.
-    This exception provides an error code, an error message and the backend response.
+    """Specific backend exception class.
+    This specific exception is raised by the module when an error is encountered.
+
+    It provides an error code, an error message and the backend response.
 
     Defined error codes:
 
@@ -226,7 +237,7 @@ class Backend(object):
         except HTTPError as e:  # pragma: no cover - need specific backend tests
             logger.error("Backend HTTP error, error: %s", str(e))
             raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
-        except RequestsConnectionError as e:
+        except RequestsConnectionError as e:  # pragma: no cover - need specific backend tests
             logger.error("Backend connection error, error: %s", str(e))
             raise BackendException(1000, "Backend connection error")
         except Exception as e:  # pragma: no cover - security ...
@@ -242,7 +253,7 @@ class Backend(object):
         """
         Connect to alignak backend and retrieve all available child endpoints of root
 
-        If connection is successfull, returns a list of all the resources available in the backend:
+        If connection is successful, returns a list of all the resources available in the backend:
         Each resource is identified with its title and provides its endpoint relative to backend
         root endpoint.::
 
@@ -427,7 +438,7 @@ class Backend(object):
             # Get first page
             resp = self.get(endpoint, params)
             number_pages = int(math.ceil(
-                int(resp['_meta']['total']) / int(resp['_meta']['max_results'])))
+                float(resp['_meta']['total']) / float(resp['_meta']['max_results'])))
 
             out_q = multiprocessing.Queue()
             chunksize = int(math.ceil(number_pages / float(self.processes)))
@@ -688,5 +699,3 @@ class Backend(object):
         except Exception as e:  # pragma: no cover - security ...
             logger.error("Backend connection exception, error: %s / %s", type(e), str(e))
             raise BackendException(1000, "Backend exception: %s / %s" % (type(e), str(e)))
-
-        return {}
