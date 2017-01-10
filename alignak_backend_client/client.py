@@ -438,7 +438,7 @@ class Backend(object):
             # Get first page
             resp = self.get(endpoint, params)
             number_pages = int(math.ceil(
-                int(resp['_meta']['total']) / int(resp['_meta']['max_results'])))
+                float(resp['_meta']['total']) / float(resp['_meta']['max_results'])))
 
             out_q = multiprocessing.Queue()
             chunksize = int(math.ceil(number_pages / float(self.processes)))
