@@ -237,7 +237,7 @@ class Backend(object):
         except HTTPError as e:  # pragma: no cover - need specific backend tests
             logger.error("Backend HTTP error, error: %s", str(e))
             raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
-        except RequestsConnectionError as e:
+        except RequestsConnectionError as e:  # pragma: no cover - need specific backend tests
             logger.error("Backend connection error, error: %s", str(e))
             raise BackendException(1000, "Backend connection error")
         except Exception as e:  # pragma: no cover - security ...
@@ -699,5 +699,3 @@ class Backend(object):
         except Exception as e:  # pragma: no cover - security ...
             logger.error("Backend connection exception, error: %s / %s", type(e), str(e))
             raise BackendException(1000, "Backend exception: %s / %s" % (type(e), str(e)))
-
-        return {}

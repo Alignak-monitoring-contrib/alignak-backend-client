@@ -94,6 +94,28 @@ class TestPatchClient(unittest2.TestCase):
         response = backend.patch('/'.join(['user', user_id]), data=data, headers=headers)
         assert_true(response['_status'] == 'OK')
 
+    def test_1_patch_successful_inception(self):
+        """
+        Test patch a user successfully with inception
+
+        :return: None
+        """
+        backend = Backend(self.backend_address)
+        backend.login('admin', 'admin')
+
+        # get user admin
+        params = {"where": {"name": "admin"}}
+        response = requests.get(self.backend_address + '/user', json=params, auth=self.auth)
+        resp = response.json()
+        user_id = resp['_items'][0]['_id']
+        # user_etag = resp['_items'][0]['_etag']
+
+        data = {'alias': 'modified test'}
+        headers = {'If-Match': 'foo'}
+        response = backend.patch('/'.join(['user', user_id]),
+                                 data=data, headers=headers, inception=True)
+        assert_true(response['_status'] == 'OK')
+
     def test_2_patch_exception(self):
         """
         Test patch a user with errors (so exceptions)

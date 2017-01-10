@@ -138,7 +138,7 @@ class TestGetClient(unittest2.TestCase):
         backend = Backend(self.backend_address)
         backend.login('admin', 'admin')
 
-        # Start with first page ...
+        # Start with first page ... max_results=3
         last_page = False
         parameters = {'max_results': 3, 'page': 1}
         items = []
@@ -164,7 +164,7 @@ class TestGetClient(unittest2.TestCase):
         print("Got %d elements:" % len(items))
         assert_equal(len(items), 101)
 
-        # Start with first page ...
+        # Start with first page ... max_results=10
         last_page = False
         parameters = {'max_results': 10, 'page': 1}
         items = []
@@ -184,6 +184,28 @@ class TestGetClient(unittest2.TestCase):
             else:
                 last_page = True
                 assert_equal(page_number, 11)
+            items.extend(resp['_items'])
+
+        # Start with first page ... no max_results
+        last_page = False
+        parameters = {'page': 1}
+        items = []
+        while not last_page:
+            resp = backend.get('hostgroup', params=parameters)
+            assert_true('_items' in resp)
+            assert_true('_links' in resp)
+            assert_true('_meta' in resp)
+            page_number = int(resp['_meta']['page'])
+            total = int(resp['_meta']['total'])
+            max_results = int(resp['_meta']['max_results'])
+            assert_equal(total, 101)
+            assert_equal(max_results, 25)
+            if 'next' in resp['_links']:
+                # It has pagination, so get items of all pages
+                parameters['page'] = page_number + 1
+            else:
+                last_page = True
+                assert_equal(page_number, 5)
             items.extend(resp['_items'])
 
         print("----------")
