@@ -41,58 +41,58 @@ alignak-backend-cli command line interface::
 
     Use cases:
         Display help message:
-            backend_client (-h | --help)
+            alignak-backend-cli (-h | --help)
 
         Display current version:
-            backend_client -V
-            backend_client --version
+            alignak-backend-cli -V
+            alignak-backend-cli --version
 
         Get an items list from the backend:
-            backend_client -l
+            alignak-backend-cli -l
             Try to get the list of all hosts and copy the JSON dump in a file named
             '/tmp/alignak-object-list-hosts'
 
-            backend_client -l -t user
+            alignak-backend-cli -l -t user
             Try to get the list of all users and copy the JSON dump in a file named
             '/tmp/alignak-object-list-users'
 
         Get an item from the backend:
-            backend_client get host_name
+            alignak-backend-cli get host_name
             Try to get the definition of an host named 'host_name' and copy the JSON dump
             in a file named '/tmp/alignak-object-dump-host-host_name'
 
-            backend_client -t user get contact_name
+            alignak-backend-cli -t user get contact_name
             Try to get the definition of a user (contact) contact named 'contact_name' and
             copy the JSON dump in a file named '/tmp/alignak-object-dump-contact-contact_name'
 
         Add an item to the backend (without templating):
-            backend_client new_host
+            alignak-backend-cli new_host
             This will add an host named new_host
 
-            backend_client -t user new_contact
+            alignak-backend-cli -t user new_contact
             This will add a user named new_contact
 
         Add an item to the backend (with some data):
-            backend_client --data="/tmp/input_host.json" add new_host
+            alignak-backend-cli --data="/tmp/input_host.json" add new_host
             This will add an host named new_host with the data that are read from the
             JSON file /tmp/input_host.json
 
-            backend_client -t user new_contact --data="stdin"
+            alignak-backend-cli -t user new_contact --data="stdin"
             This will add a user named new_contact with the JSON data read from the
-            stdin. You can 'cat file > backend_client -t user new_contact --data="stdin"'
+            stdin. You can 'cat file > alignak-backend-cli -t user new_contact --data="stdin"'
 
         Add an item to the backend based on a template:
-            backend_client -T host_template add new_host
+            alignak-backend-cli -T host_template add new_host
             This will add an host named new_host with the data existing in the template
             host_template
 
         Update an item into the backend (with some data):
-            backend_client --data="/tmp/update_host.json" update test_host
+            alignak-backend-cli --data="/tmp/update_host.json" update test_host
             This will update an host named test_host with the data that are read from the
             JSON file /tmp/update_host.json
 
         Specify you backend parameters if they are different from the default
-            backend_client -b=http://127.0.0.1:5000 -u=admin -p=admin get host_name
+            alignak-backend-cli -b=http://127.0.0.1:5000 -u=admin -p=admin get host_name
 
         Exit code:
             0 if required operation succeeded
@@ -357,22 +357,20 @@ class BackendUpdate(object):
                                         if embedded_field.startswith('_'):
                                             embedded_item.pop(embedded_field)
 
-                        dump = json.dumps(response, indent=4,
-                                          separators=(',', ': '), sort_keys=True)
-                        if self.verbose:
-                            print(dump)
-                        try:
-                            temp_d = tempfile.gettempdir()
-                            path = os.path.join(temp_d, 'alignak-object-list-%ss.json'
-                                                % (resource_name))
-                            dfile = open(path, "wb")
-                            dfile.write(dump)
-                            dfile.close()
-                        except (OSError, IndexError) as exp:
-                            logger.exception("Error when writing the list dump file %s : %s",
-                                             path, str(exp))
-
-                    logger.info("-> dumped %ss list", resource_name)
+                    dump = json.dumps(response, indent=4,
+                                      separators=(',', ': '), sort_keys=True)
+                    if self.verbose:
+                        print(dump)
+                    try:
+                        path = os.path.join(os.getcwd(), 'alignak-object-list-%ss.json'
+                                            % (resource_name))
+                        dfile = open(path, "wb")
+                        dfile.write(dump)
+                        dfile.close()
+                        logger.info("-> dumped %ss list to %s", resource_name, path)
+                    except (OSError, IndexError) as exp:
+                        logger.exception("Error when writing the list dump file %s : %s",
+                                         path, str(exp))
                 else:
                     logger.info("Dry-run mode: should have dumped an %s list", resource_name)
 
