@@ -569,7 +569,7 @@ class BackendUpdate(object):
                             params = {'where': json.dumps({'name': item_data[field]})}
                             response2 = self.backend.get(field, params=params)
                             if len(response2['_items']) > 0:
-                                response = response2['_items'][0]
+                                response2 = response2['_items'][0]
                                 logger.info("Replaced %s = %s with found item _id",
                                             field, item_data[field])
                                 item_data[field] = response2['_id']
@@ -640,7 +640,7 @@ class BackendUpdate(object):
                             params = {'where': json.dumps({'name': item_data[field]})}
                             response2 = self.backend.get(field, params=params)
                             if len(response2['_items']) > 0:
-                                response = response2['_items'][0]
+                                response2 = response2['_items'][0]
                                 logger.info("Replaced %s = %s with found item _id",
                                             field, item_data[field])
                                 item_data[field] = response2['_id']
