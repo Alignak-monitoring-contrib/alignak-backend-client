@@ -567,12 +567,12 @@ class BackendUpdate(object):
                         except ValueError:
                             # Not an integer, consider an item name
                             params = {'where': json.dumps({'name': item_data[field]})}
-                            response = self.backend.get(field, params=params)
-                            if len(response['_items']) > 0:
-                                response = response['_items'][0]
+                            response2 = self.backend.get(field, params=params)
+                            if len(response2['_items']) > 0:
+                                response = response2['_items'][0]
                                 logger.info("Replaced %s = %s with found item _id",
                                             field, item_data[field])
-                                item_data[field] = response['_id']
+                                item_data[field] = response2['_id']
                             else:
                                 logger.info("Not found %s = %s, removing field!",
                                             field, item_data[field])
@@ -638,12 +638,12 @@ class BackendUpdate(object):
                         except ValueError:
                             # Not an integer, consider an item name
                             params = {'where': json.dumps({'name': item_data[field]})}
-                            response = self.backend.get(field, params=params)
-                            if len(response['_items']) > 0:
-                                response = response['_items'][0]
+                            response2 = self.backend.get(field, params=params)
+                            if len(response2['_items']) > 0:
+                                response = response2['_items'][0]
                                 logger.info("Replaced %s = %s with found item _id",
                                             field, item_data[field])
-                                item_data[field] = response['_id']
+                                item_data[field] = response2['_id']
                         else:
                             logger.info("Not found %s = %s, removing field!",
                                         field, item_data[field])
@@ -666,7 +666,7 @@ class BackendUpdate(object):
 
                 return True
         except BackendException as e:
-            print("Creation error for  '%s' : %s", resource_name, name)
+            print("Creation/update error for  '%s' : %s" % (resource_name, name))
             logger.exception(e)
             print("~~~~~~~~~~~~~~~~~~~~~~~~~~")
             print("Exiting with error code: 5")
