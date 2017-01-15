@@ -561,7 +561,7 @@ class BackendUpdate(object):
                         item_data.pop(field)
                         continue
                     # Manage potential object link fields
-                    if field in ['realm', 'command', 'timeperiod', 'host', 'grafana']:
+                    if field in ['realm', 'command', 'timeperiod', 'host', 'grafana', 'statsd']:
                         try:
                             int(item_data[field])
                         except ValueError:
