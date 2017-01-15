@@ -573,6 +573,10 @@ class BackendUpdate(object):
                                 logger.info("Replaced %s = %s with found item _id",
                                             field, item_data[field])
                                 item_data[field] = response['_id']
+                            else:
+                                logger.info("Not found %s = %s, removing field!",
+                                            field, item_data[field])
+                                item_data.pop(field)
                         continue
 
                 if '_realm' not in item_data:
