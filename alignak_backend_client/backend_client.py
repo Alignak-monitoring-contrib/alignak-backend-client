@@ -336,10 +336,9 @@ class BackendUpdate(object):
                     for item in response:
                         # Filter fields prefixed with an _ (internal backend fields)
                         for field in item.keys():
-                            if field.startswith('_'):
-                                if field not in ['_realm', '_sub_realm']:
-                                    item.pop(field)
-                                    continue
+                            if field in ['_created', '_updated', '_etag', '_links', '_status']:
+                                item.pop(field)
+                                continue
 
                             # Filter fields prefixed with an _ in embedded items
                             if resource_name in self.embedded_resources and \
@@ -407,7 +406,7 @@ class BackendUpdate(object):
                     logger.info("-> dumping %s: %s", resource_name, name)
                     # Filter fields prefixed with an _ (internal backend fields)
                     for field in response.keys():
-                        if field.startswith('_'):
+                        if field in ['_created', '_updated', '_etag', '_links', '_status']:
                             response.pop(field)
                             continue
 
