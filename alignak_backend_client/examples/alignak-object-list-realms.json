@@ -1,0 +1,72 @@
+[
+    {
+        "_all_children": [
+            "587ef98006fd4b2d923a7182",
+            "587ef98006fd4b2d923a7183"
+        ],
+        "_children": [
+            "587ef98006fd4b2d923a7182",
+            "587ef98006fd4b2d923a7183"
+        ],
+        "_id": "587520a406fd4b4de523a1d2",
+        "_level": 0,
+        "_parent": null,
+        "_tree_parents": [],
+        "alias": "",
+        "default": true,
+        "definition_order": 100,
+        "global_critical_threshold": 5,
+        "global_warning_threshold": 3,
+        "hosts_critical_threshold": 5,
+        "hosts_warning_threshold": 3,
+        "imported_from": "unknown",
+        "name": "All",
+        "notes": "",
+        "services_critical_threshold": 5,
+        "services_warning_threshold": 3
+    },
+    {
+        "_all_children": [],
+        "_children": [],
+        "_id": "587ef98006fd4b2d923a7182",
+        "_level": 1,
+        "_parent": "587520a406fd4b4de523a1d2",
+        "_tree_parents": [
+            "587520a406fd4b4de523a1d2"
+        ],
+        "alias": "North country",
+        "default": false,
+        "definition_order": 100,
+        "global_critical_threshold": 5,
+        "global_warning_threshold": 3,
+        "hosts_critical_threshold": 5,
+        "hosts_warning_threshold": 3,
+        "imported_from": "alignak_backend_import",
+        "name": "North",
+        "notes": "",
+        "services_critical_threshold": 5,
+        "services_warning_threshold": 3
+    },
+    {
+        "_all_children": [],
+        "_children": [],
+        "_id": "587ef98006fd4b2d923a7183",
+        "_level": 1,
+        "_parent": "587520a406fd4b4de523a1d2",
+        "_tree_parents": [
+            "587520a406fd4b4de523a1d2"
+        ],
+        "alias": "South country",
+        "default": false,
+        "definition_order": 100,
+        "global_critical_threshold": 5,
+        "global_warning_threshold": 3,
+        "hosts_critical_threshold": 5,
+        "hosts_warning_threshold": 3,
+        "imported_from": "alignak_backend_import",
+        "name": "South",
+        "notes": "",
+        "services_critical_threshold": 5,
+        "services_warning_threshold": 3
+    }
+]

@@ -1,0 +1,11 @@
+[
+    {
+        "_id": "5880842f06fd4b22cd29b813",
+        "_realm": "587520a406fd4b4de523a1d2",
+        "_sub_realm": true,
+        "address": "192.168.0.17",
+        "name": "statsd_demo",
+        "port": 8125,
+        "prefix": "alignak-statsd"
+    }
+]

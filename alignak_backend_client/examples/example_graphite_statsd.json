@@ -6,5 +6,6 @@
     "graphite_port": 8080,
     "prefix": "alignak-demo",
     "grafana": "grafana_demo",
+    "statsd": "statsd_demo",
     "_sub_realm": true
 }
