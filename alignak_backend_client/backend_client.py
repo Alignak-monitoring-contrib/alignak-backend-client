@@ -322,8 +322,13 @@ class BackendUpdate(object):
         logger.info("Targeted item name: %s", self.item)
 
         # Get the template to use
-        self.template = args['--template']
-        logger.info("Using the template: %s", self.template)
+        self.templates = args['--template']
+        logger.info("Using the template(s): %s", self.templates)
+        if self.templates:
+            if ',' in self.templates:
+                self.templates = self.templates.split(',')
+            else:
+                self.templates = [self.templates]
 
         if self.list and not self.item_type:
             self.item_type = self.item
@@ -611,7 +616,7 @@ class BackendUpdate(object):
             logger.info("Trying to get %s: '%s'", resource_name, name)
 
             if name is None:
-                # Exists in the backend, we must delete the element...
+                # No name is defined, delete all the resources...
                 if not self.dry_run:
                     headers = {
                         'Content-Type': 'application/json'
@@ -826,20 +831,9 @@ class BackendUpdate(object):
             else:
                 logger.info("-> %s '%s' not existing, it can be created.", resource_name, name)
 
-                host_template = None
-                if self.template is not None:
-                    logger.info("Trying to find the %s template: %s", resource_name, self.template)
-
-                    params = {'where': json.dumps({'name': self.template, '_is_template': True})}
-                    response = self.backend.get(resource_name, params=params)
-                    if len(response['_items']) > 0:
-                        host_template = response['_items'][0]
-
-                        logger.info("-> %s template '%s': %s",
-                                    resource_name, self.template, host_template['_id'])
-                    else:
-                        print("-> %s template '%s' not found" % (resource_name, self.template))
-                        return False
+                if name is None:
+                    logger.error("-> can not add a %s without name!" % (resource_name))
+                    return False
 
                 # Data to update
                 item_data = {}
@@ -850,9 +844,25 @@ class BackendUpdate(object):
                     item_data = {
                         'name': name,
                     }
+
+                used_templates = []
+                if self.templates is not None:
+                    logger.info("Searching the %s template(s): %s", resource_name, self.templates)
+                    for template in self.templates:
+                        params = {'where': json.dumps({'name': template, '_is_template': True})}
+                        response = self.backend.get(resource_name, params=params)
+                        if len(response['_items']) > 0:
+                            used_templates.append(response['_items'][0]['_id'])
+
+                            logger.info("-> found %s template '%s': %s",
+                                        resource_name, template, response['_items'][0]['_id'])
+                        else:
+                            print("-> %s template '%s' not found" % (resource_name, template))
+                            return False
+
                 # Template information if templating is required
-                if host_template is not None:
-                    item_data.update({'_templates': [host_template['_id']],
+                if used_templates:
+                    item_data.update({'_templates': used_templates,
                                       '_templates_with_services': True})
                 if json_data is not None:
                     item_data.update(json_data)
@@ -940,6 +950,7 @@ def main():
         else:
             if not bc.item:
                 logger.error("Can not %s a %s with no name!", bc.action, bc.item_type)
+                logger.error("Perharps you missed some parameters, run 'alignak-backend-client -h'")
                 exit(64)
             success = bc.get_resource(bc.item_type, bc.item)
 

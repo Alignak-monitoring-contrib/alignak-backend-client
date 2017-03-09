@@ -290,7 +290,7 @@ class Backend(object):
         """
         Get items or item in alignak backend
 
-        If an error occurs, a BackendException is raised.
+        If an error occurs, a BackendExcehi spea1ption is raised.
 
         This method builds a response that always contains: _items and _status::
 
