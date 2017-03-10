@@ -124,6 +124,11 @@ alignak-backend-cli command line interface::
             This will add an host named new_host with the data existing in the template
             host_template
 
+        Add an item to the backend based on several templates:
+            alignak-backend-cli -T "host_template,host_template2" add new_host
+            This will add an host named new_host with the data existing in the templates
+            host_template and host_template2
+
     Use cases to update data:
         Update an item into the backend (with some data):
             alignak-backend-cli --data="./update_host.json" update test_host
@@ -134,6 +139,14 @@ alignak-backend-cli command line interface::
         Delete an item from the backend:
             alignak-backend-cli delete test_host
             This will delete the host named test_host
+
+        Delete all items from the backend:
+            alignak-backend-cli delete -t retentionservice
+            This will delete all the retentionservice items
+
+        Delete all the services of an host from the backend:
+            alignak-backend-cli delete -t service test_host/*
+            This will delete all the services of the host named test_host
 
     Hints and tips:
         You can operate on any backend endpoint: user, host, service, graphite, ... see the
@@ -322,6 +335,7 @@ class BackendUpdate(object):
         logger.info("Targeted item name: %s", self.item)
 
         # Get the template to use
+        # pylint: disable=no-member
         self.templates = args['--template']
         logger.info("Using the template(s): %s", self.templates)
         if self.templates:
@@ -835,7 +849,7 @@ class BackendUpdate(object):
                 logger.info("-> %s '%s' not existing, it can be created.", resource_name, name)
 
                 if name is None:
-                    logger.error("-> can not add a %s without name!" % (resource_name))
+                    logger.error("-> can not add a %s without name!", resource_name)
                     return False
 
                 # Data to update
