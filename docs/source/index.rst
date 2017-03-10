@@ -20,7 +20,7 @@ This documentation is built in two parts:
 * the backend command line interface
 * the backend client Python API
 
-The first part introduces aned provides some examples of a command line client that may be used to make simple operations with the Alignak backend.
+The first part introduces and provides some examples of a command line client that may be used to make simple operations with the Alignak backend.
 
 The second part is a programmatic Python API to interact with the backend.
 

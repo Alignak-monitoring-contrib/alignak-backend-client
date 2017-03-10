@@ -124,6 +124,11 @@ alignak-backend-cli command line interface::
             This will add an host named new_host with the data existing in the template
             host_template
 
+        Add an item to the backend based on several templates:
+            alignak-backend-cli -T "host_template,host_template2" add new_host
+            This will add an host named new_host with the data existing in the templates
+            host_template and host_template2
+
     Use cases to update data:
         Update an item into the backend (with some data):
             alignak-backend-cli --data="./update_host.json" update test_host
@@ -134,6 +139,14 @@ alignak-backend-cli command line interface::
         Delete an item from the backend:
             alignak-backend-cli delete test_host
             This will delete the host named test_host
+
+        Delete all items from the backend:
+            alignak-backend-cli delete -t retentionservice
+            This will delete all the retentionservice items
+
+        Delete all the services of an host from the backend:
+            alignak-backend-cli delete -t service test_host/*
+            This will delete all the services of the host named test_host
 
     Hints and tips:
         You can operate on any backend endpoint: user, host, service, graphite, ... see the
@@ -322,8 +335,14 @@ class BackendUpdate(object):
         logger.info("Targeted item name: %s", self.item)
 
         # Get the template to use
-        self.template = args['--template']
-        logger.info("Using the template: %s", self.template)
+        # pylint: disable=no-member
+        self.templates = args['--template']
+        logger.info("Using the template(s): %s", self.templates)
+        if self.templates:
+            if ',' in self.templates:
+                self.templates = self.templates.split(',')
+            else:
+                self.templates = [self.templates]
 
         if self.list and not self.item_type:
             self.item_type = self.item
@@ -611,7 +630,7 @@ class BackendUpdate(object):
             logger.info("Trying to get %s: '%s'", resource_name, name)
 
             if name is None:
-                # Exists in the backend, we must delete the element...
+                # No name is defined, delete all the resources...
                 if not self.dry_run:
                     headers = {
                         'Content-Type': 'application/json'
@@ -641,30 +660,33 @@ class BackendUpdate(object):
                         logger.warning("Not found host '%s'!", splitted_name[0])
                         return False
 
-                    params = {'where': json.dumps({'name': splitted_name[1],
-                                                   'host': host['_id']})}
-
-                response = self.backend.get(resource_name, params=params)
-                if len(response['_items']) > 0:
-                    response = response['_items'][0]
-
-                    logger.info("-> found %s '%s': %s", resource_name, name, response['_id'])
-
-                    # Exists in the backend, we must delete the element...
-                    if not self.dry_run:
-                        headers = {
-                            'Content-Type': 'application/json',
-                            'If-Match': response['_etag']
-                        }
-                        logger.info("-> deleting %s: %s", resource_name, name)
-                        self.backend.delete(resource_name + '/' + response['_id'], headers)
-                        logger.info("-> deleted %s: %s", resource_name, name)
+                    if splitted_name[1] == '*':
+                        params = {'where': json.dumps({'host': host['_id']})}
                     else:
-                        response = {'_id': '_fake', '_etag': '_fake'}
-                        logger.info("Dry-run mode: should have deleted an %s '%s'",
-                                    resource_name, name)
-                    logger.info("-> deleted: '%s': %s",
-                                resource_name, response['_id'])
+                        params = {'where': json.dumps({'name': splitted_name[1],
+                                                       'host': host['_id']})}
+
+                response = self.backend.get_all(resource_name, params=params)
+                if len(response['_items']) > 0:
+                    logger.info("-> found %d matching %s", len(response['_items']), resource_name)
+                    for item in response['_items']:
+                        logger.info("-> found %s '%s': %s", resource_name, name, item['name'])
+
+                        # Exists in the backend, we must delete the element...
+                        if not self.dry_run:
+                            headers = {
+                                'Content-Type': 'application/json',
+                                'If-Match': item['_etag']
+                            }
+                            logger.info("-> deleting %s: %s", resource_name, item['name'])
+                            self.backend.delete(resource_name + '/' + item['_id'], headers)
+                            logger.info("-> deleted %s: %s", resource_name, item['name'])
+                        else:
+                            response = {'_id': '_fake', '_etag': '_fake'}
+                            logger.info("Dry-run mode: should have deleted an %s '%s'",
+                                        resource_name, name)
+                        logger.info("-> deleted: '%s': %s",
+                                    resource_name, item['_id'])
 
                     return True
                 else:
@@ -826,20 +848,9 @@ class BackendUpdate(object):
             else:
                 logger.info("-> %s '%s' not existing, it can be created.", resource_name, name)
 
-                host_template = None
-                if self.template is not None:
-                    logger.info("Trying to find the %s template: %s", resource_name, self.template)
-
-                    params = {'where': json.dumps({'name': self.template, '_is_template': True})}
-                    response = self.backend.get(resource_name, params=params)
-                    if len(response['_items']) > 0:
-                        host_template = response['_items'][0]
-
-                        logger.info("-> %s template '%s': %s",
-                                    resource_name, self.template, host_template['_id'])
-                    else:
-                        print("-> %s template '%s' not found" % (resource_name, self.template))
-                        return False
+                if name is None:
+                    logger.error("-> can not add a %s without name!", resource_name)
+                    return False
 
                 # Data to update
                 item_data = {}
@@ -850,9 +861,25 @@ class BackendUpdate(object):
                     item_data = {
                         'name': name,
                     }
+
+                used_templates = []
+                if self.templates is not None:
+                    logger.info("Searching the %s template(s): %s", resource_name, self.templates)
+                    for template in self.templates:
+                        params = {'where': json.dumps({'name': template, '_is_template': True})}
+                        response = self.backend.get(resource_name, params=params)
+                        if len(response['_items']) > 0:
+                            used_templates.append(response['_items'][0]['_id'])
+
+                            logger.info("-> found %s template '%s': %s",
+                                        resource_name, template, response['_items'][0]['_id'])
+                        else:
+                            print("-> %s template '%s' not found" % (resource_name, template))
+                            return False
+
                 # Template information if templating is required
-                if host_template is not None:
-                    item_data.update({'_templates': [host_template['_id']],
+                if used_templates:
+                    item_data.update({'_templates': used_templates,
                                       '_templates_with_services': True})
                 if json_data is not None:
                     item_data.update(json_data)
@@ -940,6 +967,7 @@ def main():
         else:
             if not bc.item:
                 logger.error("Can not %s a %s with no name!", bc.action, bc.item_type)
+                logger.error("Perharps you missed some parameters, run 'alignak-backend-client -h'")
                 exit(64)
             success = bc.get_resource(bc.item_type, bc.item)
 

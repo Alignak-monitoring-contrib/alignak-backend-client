@@ -17,6 +17,6 @@ The ``alignak_backend_cli`` script receives some command line parameters to defi
 
 Command line interface
 ----------------------
-.. automodule:: alignak_backend_import.backend_client
+.. automodule:: alignak_backend_client.backend_client
 
 
