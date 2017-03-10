@@ -646,30 +646,33 @@ class BackendUpdate(object):
                         logger.warning("Not found host '%s'!", splitted_name[0])
                         return False
 
-                    params = {'where': json.dumps({'name': splitted_name[1],
-                                                   'host': host['_id']})}
-
-                response = self.backend.get(resource_name, params=params)
-                if len(response['_items']) > 0:
-                    response = response['_items'][0]
-
-                    logger.info("-> found %s '%s': %s", resource_name, name, response['_id'])
-
-                    # Exists in the backend, we must delete the element...
-                    if not self.dry_run:
-                        headers = {
-                            'Content-Type': 'application/json',
-                            'If-Match': response['_etag']
-                        }
-                        logger.info("-> deleting %s: %s", resource_name, name)
-                        self.backend.delete(resource_name + '/' + response['_id'], headers)
-                        logger.info("-> deleted %s: %s", resource_name, name)
+                    if splitted_name[1] == '*':
+                        params = {'where': json.dumps({'host': host['_id']})}
                     else:
-                        response = {'_id': '_fake', '_etag': '_fake'}
-                        logger.info("Dry-run mode: should have deleted an %s '%s'",
-                                    resource_name, name)
-                    logger.info("-> deleted: '%s': %s",
-                                resource_name, response['_id'])
+                        params = {'where': json.dumps({'name': splitted_name[1],
+                                                       'host': host['_id']})}
+
+                response = self.backend.get_all(resource_name, params=params)
+                if len(response['_items']) > 0:
+                    logger.info("-> found %d matching %s", len(response['_items']), resource_name)
+                    for item in response['_items']:
+                        logger.info("-> found %s '%s': %s", resource_name, name, item['name'])
+
+                        # Exists in the backend, we must delete the element...
+                        if not self.dry_run:
+                            headers = {
+                                'Content-Type': 'application/json',
+                                'If-Match': item['_etag']
+                            }
+                            logger.info("-> deleting %s: %s", resource_name, item['name'])
+                            self.backend.delete(resource_name + '/' + item['_id'], headers)
+                            logger.info("-> deleted %s: %s", resource_name, item['name'])
+                        else:
+                            response = {'_id': '_fake', '_etag': '_fake'}
+                            logger.info("Dry-run mode: should have deleted an %s '%s'",
+                                        resource_name, name)
+                        logger.info("-> deleted: '%s': %s",
+                                    resource_name, item['_id'])
 
                     return True
                 else:
