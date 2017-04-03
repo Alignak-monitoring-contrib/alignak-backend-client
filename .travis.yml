@@ -13,23 +13,30 @@ install:
   - ./test/setup_test.sh
 
 script:
-  - pip freeze  # so to help eventual debug: know what exact versions are in use can be rather useful.
+  # so to help eventual debug: knowing what exact versions are in use can be rather useful.
+  - pip freeze
   # Code static analysis
   - pep8 --max-line-length=100 --exclude='*.pyc, *.cfg, *.log' --ignore='E402' alignak_backend_client/*
-  - rm -fr alignak_backend_client/__pycache__
-  - pylint --rcfile=.pylintrc alignak_backend_client/*
+  - pylint --rcfile=.pylintrc alignak_backend_client/
   - pep257 --select=D300 alignak_backend_client
-  # Code test and dynamic analysis
+  # Code dynamic analysis
   - cd test
+  # Delete previously existing coverage results
   - coverage erase
-  - nosetests -xv --nologcapture --process-restartworker --processes=1 --process-timeout=300 --with-coverage --cover-package=alignak_backend_client test*.py
-  - coverage report
+  # Run test suite with py.test running its coverage plugin - for backend client library
+  - pytest --cov=alignak_backend_client test_*.py
+  # Run test suite with py.test running its coverage plugin - for alignak-backend-cli utility
+  # - pytest --cov=backend_client --cov-config .coveragerc alignak-backend-cli-tests.py
+  # Report about coverage
+  - coverage report -m
   # Test code static analysis
   - pep8 --max-line-length=100 --ignore='E402' test_*.py
   - pylint --rcfile=../.pylintrc test_*.py
   - cd ..
+  - cd ..
+
 after_success:
   # to get coverage data with relative paths and not absolute we have to
   # execute coveralls from the base directory of the project,
   # so we need to move the .coverage file here :
-  mv test/.coverage . && coveralls --rcfile=test/.coveragerc -v
+  mv test/.coverage . && coveralls --rcfile=test/.coveragerc
