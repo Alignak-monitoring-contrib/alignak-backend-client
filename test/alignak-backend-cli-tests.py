@@ -13,6 +13,8 @@ import time
 
 import unittest2
 
+# import alignak_backend_client.backend_client
+#
 # Set coverage test mode...
 os.environ['COVERAGE_PROCESS_START'] = '1'
 
@@ -59,20 +61,21 @@ class TestAlignakBackendCli(unittest2.TestCase):
         # pylint: disable=no-self-use
         """ Start CLI without parameters or erroneous parameters"""
         print('test application default start')
+        print("Coverage env: %s" % os.environ.get('COV_CORE_SOURCE', 'unknown'))
 
         fnull = open(os.devnull, 'w')
 
         print("Launching application without parameters...")
+        # from alignak_backend_client.backend_client import main
+        # print("Main: %s" % main())
         exit_code = subprocess.call(
-            shlex.split('python ../alignak_backend_client/backend_client.py'),
-            stdout=fnull, stderr=fnull
+            shlex.split('python ../alignak_backend_client/backend_client.py')
         )
         assert exit_code == 64
 
         print("Launching application with erroneous parameters...")
         exit_code = subprocess.call(
-            shlex.split('python ../alignak_backend_client/backend_client.py -Z'),
-            stdout=fnull, stderr=fnull
+            shlex.split('python ../alignak_backend_client/backend_client.py -Z')
         )
         assert exit_code == 64
 

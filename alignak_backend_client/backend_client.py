@@ -703,7 +703,7 @@ class BackendUpdate(object):
         return True
 
     def create_update_resource(self, resource_name, name, update=False):
-        # pylint: disable=too-many-return-statements, too-many-locals
+        # pylint: disable=too-many-return-statements, too-many-locals, redefined-variable-type
         """Create or update a specific resource
 
         :param resource_name: backend resource endpoint (eg. host, user, ...)
