@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
 import sys
 
 from importlib import import_module
@@ -11,14 +10,8 @@ try:
 except:
     sys.exit("Error: missing python-setuptools library")
 
-try:
-    from alignak.version import VERSION
-    __alignak_version__ = VERSION
-except:
-    __alignak_version__ = 'x.y.z'
-
-from alignak_backend_client import __application__, __version__, __copyright__
-from alignak_backend_client import __releasenotes__, __license__, __doc_url__
+from alignak_backend_client import __version__, __author__, __author_email__
+from alignak_backend_client import __license__, __git_url__, __classifiers__
 from alignak_backend_client import __name__ as __pkg_name__
 
 package = import_module('alignak_backend_client')
@@ -30,18 +23,23 @@ setup(
     license=__license__,
 
     # metadata for upload to PyPI
-    author="Frédéric MOHIER",
-    author_email="frederic.mohier@gmail.com",
+    author=__author__,
+    author_email=__author_email__,
     keywords="alignak monitoring backend",
-    url="https://github.com/Alignak-monitoring-contrib/alignak-backend-client",
+    url=__git_url__,
     description=package.__doc__.strip(),
     long_description=open('README.rst').read(),
+
+    classifiers = __classifiers__,
 
     zip_safe=False,
 
     packages=find_packages(),
-    include_package_data=True,
 
+    # Where to install distributed files
+    # data_files = [],
+
+    # Dependencies (if some) ...
     install_requires=['requests', 'future'],
 
     entry_points={
@@ -49,15 +47,4 @@ setup(
             'alignak-backend-cli = alignak_backend_client.backend_client:main'
         ],
     },
-    classifiers = [
-        'Development Status :: 5 - Production/Stable',
-        'Environment :: Console',
-        'Intended Audience :: Developers',
-        'Intended Audience :: System Administrators',
-        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
-        'Natural Language :: English',
-        'Programming Language :: Python',
-        'Topic :: System :: Monitoring',
-        'Topic :: System :: Systems Administration'
-    ]
 )
