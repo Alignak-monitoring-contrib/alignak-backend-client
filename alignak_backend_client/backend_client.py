@@ -59,14 +59,14 @@ alignak-backend-cli command line interface::
             alignak-backend-cli -V
             alignak-backend-cli --version
 
-        Specify you backend parameters if they are different from the default
+        Specify backend parameters if they are different from the default
             alignak-backend-cli -b=http://127.0.0.1:5000 -u=admin -p=admin get host_name
 
     Actions:
         'get' to get an item in the backend
         'list' (shortcut for 'get -l' to get the list of all items of a type
-        'add' to add an item in the backend
-        'update' to update an item in the backend
+        'add' to add an(some) item(s) in the backend
+        'update' to update an(some) item(s) in the backend
         'delete' to delete an item (or all items of a type) in the backend
 
     Use cases to get data:
@@ -400,7 +400,7 @@ class BackendUpdate(object):
             if tp['name'] == '24x7':
                 self.tp_always = tp['_id']
                 logger.info("Found TP '24x7': %s", self.tp_always)
-            if tp['name'].lower() == 'none' or tp['name'].lower() == 'none':
+            if tp['name'].lower() == 'none' or tp['name'].lower() == 'never':
                 self.tp_never = tp['_id']
                 logger.info("Found TP 'Never': %s", self.tp_never)
 
@@ -848,96 +848,137 @@ class BackendUpdate(object):
             else:
                 logger.info("-> %s '%s' not existing, it can be created.", resource_name, name)
 
-                if name is None:
+                if name is None and json_data is None:
                     logger.error("-> can not add a %s without name!", resource_name)
                     return False
 
-                # Data to update
-                item_data = {}
-                if self.include_read_data:
-                    # Include read data
-                    item_data = response
-                if name is not None:
-                    item_data = {
-                        'name': name,
-                    }
+                if json_data is None:
+                    json_data = {}
+                    if self.include_read_data:
+                        # Include read data
+                        json_data = response
+                    json_data['name'] = name
 
-                used_templates = []
-                if self.templates is not None:
-                    logger.info("Searching the %s template(s): %s", resource_name, self.templates)
-                    for template in self.templates:
-                        params = {'where': json.dumps({'name': template, '_is_template': True})}
-                        response = self.backend.get(resource_name, params=params)
-                        if len(response['_items']) > 0:
-                            used_templates.append(response['_items'][0]['_id'])
+                if not isinstance(json_data, list):
+                    json_data = [json_data]
 
-                            logger.info("-> found %s template '%s': %s",
-                                        resource_name, template, response['_items'][0]['_id'])
-                        else:
-                            print("-> %s template '%s' not found" % (resource_name, template))
-                            return False
+                for json_item in json_data:
+                    # Data to update
+                    item_data = json_item
 
-                # Template information if templating is required
-                if used_templates:
-                    item_data.update({'_templates': used_templates,
-                                      '_templates_with_services': True})
-                if json_data is not None:
-                    item_data.update(json_data)
+                    used_templates = []
+                    if self.templates is not None:
+                        logger.info("Searching the %s template(s): %s",
+                                    resource_name, self.templates)
+                        for template in self.templates:
+                            params = {'where': json.dumps({'name': template, '_is_template': True})}
+                            response = self.backend.get(resource_name, params=params)
+                            if len(response['_items']) > 0:
+                                used_templates.append(response['_items'][0]['_id'])
 
-                for field in item_data.copy():
-                    logger.debug("Field: %s = %s", field, item_data[field])
-                    # Filter Eve extra fields
-                    if field in ['_created', '_updated', '_etag', '_links', '_status']:
-                        item_data.pop(field)
-                        continue
-                    # Filter specific backend inner computed fields
-                    if field in ['_overall_state_id']:
-                        item_data.pop(field)
-                        continue
-                    # Manage potential object link fields
-                    if field in ['realm', 'command', 'host', 'service',
-                                 'check_period', 'notification_period',
-                                 'host_notification_period', 'service_notification_period',
-                                 'check_command', 'event_handler',
-                                 'grafana', 'statsd']:
-                        try:
-                            int(item_data[field])
-                        except TypeError:
-                            pass
-                        except ValueError:
-                            # Not an integer, consider an item name
-                            params = {'where': json.dumps({'name': item_data[field]})}
-                            if field in ['check_period', 'notification_period',
-                                         'host_notification_period', 'service_notification_period']:
-                                response2 = self.backend.get('timeperiod', params=params)
-                            elif field in ['check_command', 'event_handler']:
-                                response2 = self.backend.get('command', params=params)
+                                logger.info("-> found %s template '%s': %s",
+                                            resource_name, template, response['_items'][0]['_id'])
                             else:
-                                response2 = self.backend.get(field, params=params)
-                            if len(response2['_items']) > 0:
-                                response2 = response2['_items'][0]
-                                logger.info("Replaced %s = %s with found item _id",
-                                            field, item_data[field])
-                                item_data[field] = response2['_id']
-                        else:
-                            logger.info("Not found %s = %s, removing field!",
-                                        field, item_data[field])
+                                print("-> %s template '%s' not found" % (resource_name, template))
+                                return False
+
+                    # Template information if templating is required
+                    if used_templates:
+                        item_data.update({'_templates': used_templates,
+                                          '_templates_with_services': True})
+
+                    for field in item_data.copy():
+                        logger.debug("Field: %s = %s", field, item_data[field])
+                        # Filter Eve extra fields
+                        if field in ['_created', '_updated', '_etag', '_links', '_status']:
                             item_data.pop(field)
-                        continue
+                            continue
+                        # Filter specific backend inner computed fields
+                        if field in ['_overall_state_id']:
+                            item_data.pop(field)
+                            continue
 
-                if '_realm' not in item_data:
-                    item_data.update({'_realm': self.realm_all})
+                        # Some specific fields...
+                        if field in ['_realm']:
+                            field = 'realm'
+                            item_data['realm'] = item_data.pop('_realm')
+                        if field in ['_templates']:
+                            field = 'templates'
+                            item_data['templates'] = item_data.pop('_templates')
 
-                if not self.dry_run:
-                    logger.info("-> trying to create the %s: %s, with: %s",
-                                resource_name, name, item_data)
-                    response = self.backend.post(resource_name, item_data, headers=None)
-                else:
-                    response = {'_id': '_fake', '_etag': '_fake'}
-                    logger.info("Dry-run mode: should have created an %s '%s' with %s",
-                                resource_name, name, item_data)
-                logger.info("-> created: '%s': %s, with %s",
-                            resource_name, response['_id'], item_data)
+                        # Manage potential object link fields
+                        if field not in ['realm', 'templates', 'command', 'host', 'service',
+                                         'escalation_period', 'maintenance_period',
+                                         'snapshot_period', 'check_period', 'dependency_period',
+                                         'notification_period', 'host_notification_period',
+                                         'service_notification_period',
+                                         'check_command', 'event_handler', 'grafana', 'statsd']:
+                            continue
+
+                        field_values = item_data[field]
+                        if not isinstance(item_data[field], list):
+                            field_values = [item_data[field]]
+
+                        found = None
+                        for value in field_values:
+                            try:
+                                int(value)
+                            except TypeError:
+                                pass
+                            except ValueError:
+                                # Not an integer, consider an item name
+                                params = {'where': json.dumps({'name': value})}
+                                if field in ['escalation_period', 'maintenance_period',
+                                             'snapshot_period', 'check_period',
+                                             'dependency_period', 'notification_period',
+                                             'host_notification_period',
+                                             'service_notification_period']:
+                                    response2 = self.backend.get('timeperiod', params=params)
+                                elif field in ['check_command', 'event_handler']:
+                                    response2 = self.backend.get('command', params=params)
+                                elif field in ['templates']:
+                                    params = {'where': json.dumps({'name': value,
+                                                                   '_is_template': True})}
+                                    response2 = self.backend.get(resource_name, params=params)
+                                else:
+                                    response2 = self.backend.get(field, params=params)
+
+                                if len(response2['_items']) > 0:
+                                    response2 = response2['_items'][0]
+                                    logger.info("Replaced %s = %s with found item _id",
+                                                field, value)
+                                    if not isinstance(item_data[field], list):
+                                        found = response2['_id']
+                                    else:
+                                        if found is None:
+                                            found = []
+                                        found.append(response2['_id'])
+
+                        if found is None:
+                            logger.info("Not found %s = %s, removing field!", field, field_values)
+                            item_data.pop(field)
+                        else:
+                            item_data[field] = found
+
+                    if 'realm' in item_data:
+                        item_data['_realm'] = item_data.pop('realm')
+
+                    if 'templates' in item_data:
+                        item_data['_templates'] = item_data.pop('templates')
+
+                    if '_realm' not in item_data:
+                        item_data.update({'_realm': self.realm_all})
+
+                    if not self.dry_run:
+                        logger.info("-> trying to create the %s: %s, with: %s",
+                                    resource_name, name, item_data)
+                        response = self.backend.post(resource_name, item_data, headers=None)
+                    else:
+                        response = {'_id': '_fake', '_etag': '_fake'}
+                        logger.info("Dry-run mode: should have created an %s '%s' with %s",
+                                    resource_name, name, item_data)
+                    logger.info("-> created: '%s': %s, with %s",
+                                resource_name, response['_id'], item_data)
 
                 return True
         except BackendException as e:

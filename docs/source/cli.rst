@@ -20,3 +20,10 @@ Command line interface
 .. automodule:: alignak_backend_client.backend_client
 
 
+
+Some examples
+-------------
+
+Get elements list
+~~~~~~~~~~~~~~~~~
+
