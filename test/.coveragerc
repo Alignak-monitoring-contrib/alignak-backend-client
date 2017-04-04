@@ -15,6 +15,7 @@ exclude_lines =
 ;branch = True
 source =
     alignak_backend_client
+    backend_client
 
 omit =
     */mock/*

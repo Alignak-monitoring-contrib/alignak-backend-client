@@ -24,6 +24,7 @@ alignak-backend-cli command line interface::
         alignak-backend-cli [-v] [-q] [-c] [-l] [-m] [-e] [-i]
                             [-b=url] [-u=username] [-p=password]
                             [-d=data]
+                            [-f=folder]
                             [-T=template] [-t=type] [<action>] [<item>]
 
     Options:
@@ -37,6 +38,7 @@ alignak-backend-cli command line interface::
         -u, --username=username     Backend login username [default: admin]
         -p, --password=password     Backend login password [default: admin]
         -d, --data=data             Data for the new item to create [default: none]
+        -f, --folder=folder         Folder where to read/write data files [default: none]
         -i, --include-read-data     Do not use only the provided data, but append the one
                                     read from he backend
         -t, --type=host             Type of the provided item [default: host]
@@ -59,14 +61,14 @@ alignak-backend-cli command line interface::
             alignak-backend-cli -V
             alignak-backend-cli --version
 
-        Specify you backend parameters if they are different from the default
+        Specify backend parameters if they are different from the default
             alignak-backend-cli -b=http://127.0.0.1:5000 -u=admin -p=admin get host_name
 
     Actions:
         'get' to get an item in the backend
         'list' (shortcut for 'get -l' to get the list of all items of a type
-        'add' to add an item in the backend
-        'update' to update an item in the backend
+        'add' to add an(some) item(s) in the backend
+        'update' to update an(some) item(s) in the backend
         'delete' to delete an item (or all items of a type) in the backend
 
     Use cases to get data:
@@ -78,6 +80,10 @@ alignak-backend-cli command line interface::
             alignak-backend-cli get -l -t user
             Try to get the list of all users and copy the JSON dump in a file named
             './alignak-object-list-users.json'
+
+            alignak-backend-cli get -l -f /tmp -t user
+            Try to get the list of all users and copy the JSON dump in a file named
+            '/tmp/alignak-object-list-users.json'
 
             alignak-backend-cli list -t user
             Shortcut for 'alignak-backend-cli get -l -t user'
@@ -207,9 +213,7 @@ __version__ = "0.6.12"
 
 
 class BackendUpdate(object):
-    """
-    Class to interface the Alignak backend to make some operations
-    """
+    """Class to interface the Alignak backend to make some operations"""
     embedded_resources = {
         'realm': {
             '_parent': 1,
@@ -272,6 +276,7 @@ class BackendUpdate(object):
 
     def __init__(self):
         self.logged_in = False
+        self.logged_in_user = None
 
         # Get command line parameters
         args = None
@@ -297,47 +302,47 @@ class BackendUpdate(object):
 
         # Dry-run mode?
         self.dry_run = args['--check']
-        logger.info("Dry-run mode (check only): %s", self.dry_run)
+        logger.debug("Dry-run mode (check only): %s", self.dry_run)
 
         # Backend URL
         self.backend = None
         self.backend_url = args['--backend']
-        logger.info("Backend URL: %s", self.backend_url)
+        logger.debug("Backend URL: %s", self.backend_url)
 
         # Backend authentication
         self.username = args['--username']
         self.password = args['--password']
-        logger.info("Backend login with credentials: %s/%s", self.username, self.password)
+        logger.debug("Backend login with credentials: %s/%s", self.username, self.password)
 
         # Get a list
         self.list = args['--list']
-        logger.info("Get a list: %s", self.list)
+        logger.debug("Get a list: %s", self.list)
 
         # Get the objects templates in the list
         self.model = args['--model']
-        logger.info("Get the templates: %s", self.model)
+        logger.debug("Get the templates: %s", self.model)
 
         # Get the item type
         self.item_type = args['--type']
-        logger.info("Item type: %s", self.item_type)
+        logger.debug("Item type: %s", self.item_type)
 
         # Get the action to execute
         self.action = args['<action>']
         if self.action is None:
             self.action = 'get'
-        logger.info("Action to execute: %s", self.action)
+        logger.debug("Action to execute: %s", self.action)
         if self.action not in ['add', 'update', 'get', 'list', 'delete']:
             print("Action '%s' is not authorized." % (self.action))
             exit(64)
 
         # Get the targeted item
         self.item = args['<item>']
-        logger.info("Targeted item name: %s", self.item)
+        logger.debug("Targeted item name: %s", self.item)
 
         # Get the template to use
         # pylint: disable=no-member
         self.templates = args['--template']
-        logger.info("Using the template(s): %s", self.templates)
+        logger.debug("Using the template(s): %s", self.templates)
         if self.templates:
             if ',' in self.templates:
                 self.templates = self.templates.split(',')
@@ -346,33 +351,37 @@ class BackendUpdate(object):
 
         if self.list and not self.item_type:
             self.item_type = self.item
-            logger.info("Item type (computed): %s", self.item_type)
+            logger.debug("Item type (computed): %s", self.item_type)
 
         # Embedded mode
         self.embedded = args['--embedded']
-        logger.info("Embedded mode: %s", self.embedded)
+        logger.debug("Embedded mode: %s", self.embedded)
+
+        # Get the data files folder
+        self.folder = None
+        if args['--folder'] != 'none':
+            self.folder = args['--folder']
+        logger.debug("Data files folder: %s", self.folder)
 
         # Get the associated data file
-        self.data = args['--data']
-        logger.info("Item data provided: %s", self.data)
+        self.data = None
+        if args['--data'] != 'none':
+            self.data = args['--data']
+        logger.debug("Item data provided: %s", self.data)
         self.include_read_data = args['--include-read-data']
-        logger.info("Use backend read data: %s", self.include_read_data)
+        logger.debug("Use backend read data: %s", self.include_read_data)
 
     def initialize(self):
         # pylint: disable=attribute-defined-outside-init
-        """
-        Login on backend with username and password
+        """Login on backend with username and password
 
         :return: None
         """
         try:
             logger.info("Authenticating...")
-            # Backend authentication with token generation
-            # headers = {'Content-Type': 'application/json'}
-            # payload = {'username': self.username, 'password': self.password, 'action': 'generate'}
             self.backend = Backend(self.backend_url)
             self.backend.login(self.username, self.password)
-        except BackendException as e:
+        except BackendException as e:  # pragma: no cover, should never happen
             print("Backend exception: %s" % str(e))
 
         if self.backend.token is None:
@@ -383,14 +392,20 @@ class BackendUpdate(object):
 
         logger.info("Authenticated.")
 
-        # Default realm
-        self.realm_all = ''
-        self.default_realm = ''
+        # Logged-in user and default realm
+        users = self.backend.get_all('user', {'where': json.dumps({'name': self.username})})
+        self.logged_in_user = users['_items'][0]
+        self.default_realm = self.logged_in_user['_realm']
+
+        # Main realm
+        self.realm_all = None
         realms = self.backend.get_all('realm')
         for r in realms['_items']:
             if r['name'] == 'All' and r['_level'] == 0:
                 self.realm_all = r['_id']
                 logger.info("Found realm 'All': %s", self.realm_all)
+            if r['_id'] == self.default_realm:
+                logger.info("Found logged-in user realm: %s", r['name'])
 
         # Default timeperiods
         self.tp_always = None
@@ -400,7 +415,7 @@ class BackendUpdate(object):
             if tp['name'] == '24x7':
                 self.tp_always = tp['_id']
                 logger.info("Found TP '24x7': %s", self.tp_always)
-            if tp['name'].lower() == 'none' or tp['name'].lower() == 'none':
+            if tp['name'].lower() == 'none' or tp['name'].lower() == 'never':
                 self.tp_never = tp['_id']
                 logger.info("Found TP 'Never': %s", self.tp_never)
 
@@ -413,13 +428,13 @@ class BackendUpdate(object):
         """
         dump = json.dumps(data, indent=4,
                           separators=(',', ': '), sort_keys=True)
+        path = os.path.join(self.folder or os.getcwd(), filename)
         try:
-            path = os.path.join(os.getcwd(), filename)
-            dfile = open(path, "wb")
+            dfile = open(path, "wt")
             dfile.write(dump)
             dfile.close()
             return path
-        except (OSError, IndexError) as exp:
+        except (OSError, IndexError) as exp:  # pragma: no cover, should never happen
             logger.exception("Error when writing the list dump file %s : %s", path, str(exp))
         return None
 
@@ -467,7 +482,7 @@ class BackendUpdate(object):
                     logger.info("-> dumping %ss list", resource_name)
                     for item in response:
                         # Filter fields prefixed with an _ (internal backend fields)
-                        for field in item.keys():
+                        for field in list(item):
                             if field in ['_created', '_updated', '_etag', '_links', '_status']:
                                 item.pop(field)
                                 continue
@@ -484,12 +499,11 @@ class BackendUpdate(object):
                                 for embedded_item in embedded_items:
                                     if not embedded_item:
                                         continue
-                                    for embedded_field in embedded_item.keys():
+                                    for embedded_field in list(embedded_item):
                                         if embedded_field.startswith('_'):
                                             embedded_item.pop(embedded_field)
 
-                    filename = self.file_dump(response,
-                                              'alignak-%s-list-%ss.json'
+                    filename = self.file_dump(response, 'alignak-%s-list-%ss.json'
                                               % ('model' if self.model else 'object',
                                                  resource_name))
                     if filename:
@@ -500,10 +514,17 @@ class BackendUpdate(object):
                 return True
             else:
                 logger.warning("-> %s list is empty", resource_name)
-                self.file_dump([], 'alignak-object-list-%ss.json' % (resource_name))
+                if not self.dry_run:
+                    logger.info("-> dumping %ss list", resource_name)
+                    filename = self.file_dump([], 'alignak-%s-list-%ss.json'
+                                              % ('model' if self.model else 'object',
+                                                 resource_name))
+                    if filename:
+                        logger.info("-> dumped %ss list to %s", resource_name, filename)
+
                 return True
 
-        except BackendException as e:
+        except BackendException as e:  # pragma: no cover, should never happen
             print("Get error for '%s' list" % (resource_name))
             logger.exception(e)
             print("~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -529,7 +550,8 @@ class BackendUpdate(object):
 
             if resource_name == 'service' and '/' in name:
                 splitted_name = name.split('/')
-                name = splitted_name[0] + '_' + splitted_name[1]
+                # new_name = splitted_name[0] + '_' + splitted_name[1]
+                # name = splitted_name[1]
 
                 # Get host from name
                 response2 = self.backend.get(
@@ -565,7 +587,8 @@ class BackendUpdate(object):
                     response2 = self.backend.get('service', params=params)
                     if len(response2['_items']) > 0:
                         response['_services'] = response2['_items']
-                        logger.info("Got %d services for host '%s'", len(response2['_items']), name)
+                        logger.info("Got %d services for host '%s'",
+                                    len(response2['_items']), splitted_name[0])
                     else:
                         logger.warning("Not found host '%s'!", splitted_name[0])
                         return False
@@ -574,7 +597,7 @@ class BackendUpdate(object):
                 if not self.dry_run:
                     logger.info("-> dumping %s: %s", resource_name, name)
                     # Filter fields prefixed with an _ (internal backend fields)
-                    for field in response.keys():
+                    for field in list(response):
                         if field in ['_created', '_updated', '_etag', '_links', '_status']:
                             response.pop(field)
                             continue
@@ -592,7 +615,7 @@ class BackendUpdate(object):
                             for embedded_item in embedded_items:
                                 if not embedded_item:
                                     continue
-                                for embedded_field in embedded_item.keys():
+                                for embedded_field in list(embedded_item):
                                     if embedded_field.startswith('_'):
                                         embedded_item.pop(embedded_field)
 
@@ -601,6 +624,8 @@ class BackendUpdate(object):
                     if not self.quiet:
                         print(dump)
 
+                    if resource_name == 'service' and '/' in name:
+                        name = splitted_name[0] + '_' + splitted_name[1]
                     filename = self.file_dump(response,
                                               'alignak-object-dump-%s-%s.json'
                                               % (resource_name, name))
@@ -609,6 +634,8 @@ class BackendUpdate(object):
 
                     logger.info("-> dumped %s: %s", resource_name, name)
                 else:
+                    if resource_name == 'service' and '/' in name:
+                        name = splitted_name[0] + '_' + splitted_name[1]
                     logger.info("Dry-run mode: should have dumped an %s '%s'",
                                 resource_name, name)
 
@@ -617,7 +644,7 @@ class BackendUpdate(object):
                 logger.warning("-> %s '%s' not found", resource_name, name)
                 return False
 
-        except BackendException as e:
+        except BackendException as e:  # pragma: no cover, should never happen
             print("Get error for  '%s' : %s" % (resource_name, name))
             logger.exception(e)
             print("~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -693,9 +720,9 @@ class BackendUpdate(object):
                     logger.warning("-> %s item '%s' not found", resource_name, name)
                     return False
 
-        except BackendException as e:
+        except BackendException as exp:  # pragma: no cover, should never happen
             print("Deletion error for  '%s' : %s" % (resource_name, name))
-            logger.exception(e)
+            logger.exception(exp)
             print("~~~~~~~~~~~~~~~~~~~~~~~~~~")
             print("Exiting with error code: 5")
             return False
@@ -704,6 +731,7 @@ class BackendUpdate(object):
 
     def create_update_resource(self, resource_name, name, update=False):
         # pylint: disable=too-many-return-statements, too-many-locals
+        # pylint: disable=redefined-variable-type, too-many-nested-blocks
         """Create or update a specific resource
 
         :param resource_name: backend resource endpoint (eg. host, user, ...)
@@ -716,12 +744,13 @@ class BackendUpdate(object):
 
         # If some data are provided, try to get them
         json_data = None
-        if self.data != 'none':
+        if self.data:
             try:
                 if self.data == 'stdin':
                     inf = sys.stdin
                 else:
-                    inf = open(self.data)
+                    path = os.path.join(self.folder or os.getcwd(), self.data)
+                    inf = open(path)
 
                 json_data = json.load(inf)
                 logger.info("Got provided data: %s", json_data)
@@ -741,7 +770,7 @@ class BackendUpdate(object):
                 params = {'where': json.dumps({'name': name})}
                 if resource_name == 'service' and '/' in name:
                     splitted_name = name.split('/')
-                    name = splitted_name[0] + '_' + splitted_name[1]
+                    # name = splitted_name[0] + '_' + splitted_name[1]
 
                     # Get host from name
                     response2 = self.backend.get(
@@ -782,165 +811,303 @@ class BackendUpdate(object):
                 if self.include_read_data:
                     # Include read data
                     item_data = response
-                if json_data is not None:
-                    logger.debug("Update got data with: %s", json_data)
-                    item_data.update(json_data)
 
-                for field in item_data.copy():
-                    logger.debug("Field: %s = %s", field, item_data[field])
-                    # Filter Eve extra fields
-                    if field in ['_created', '_updated', '_etag', '_links', '_status']:
-                        item_data.pop(field)
-                        continue
-                    # Filter specific backend inner computed fields
-                    if field in ['_overall_state_id']:
-                        item_data.pop(field)
-                        continue
-                    # Manage potential object link fields
-                    if field in ['realm', 'command', 'host', 'service',
-                                 'check_period', 'notification_period',
-                                 'host_notification_period', 'service_notification_period',
-                                 'check_command', 'event_handler',
-                                 'grafana', 'statsd']:
-                        try:
-                            int(item_data[field])
-                        except TypeError:
-                            pass
-                        except ValueError:
-                            # Not an integer, consider an item name
-                            params = {'where': json.dumps({'name': item_data[field]})}
-                            if field in ['check_period', 'notification_period',
-                                         'host_notification_period', 'service_notification_period']:
-                                response2 = self.backend.get('timeperiod', params=params)
-                            elif field in ['check_command', 'event_handler']:
-                                response2 = self.backend.get('command', params=params)
+                if json_data is None:
+                    json_data = {}
+                    if self.include_read_data:
+                        # Include read data
+                        json_data = response
+
+                if not isinstance(json_data, list):
+                    json_data = [json_data]
+
+                for json_item in json_data:
+                    # Data to update
+                    item_data = {}
+                    if self.include_read_data:
+                        # Include read data
+                        item_data = response
+                    item_data.update(json_item)
+
+                    if name is not None:
+                        item_data['name'] = name
+                        if resource_name == 'service' and '/' in name:
+                            splitted_name = name.split('/')
+                            item_data['name'] = splitted_name[1]
+
+                    used_templates = []
+                    if self.templates is not None:
+                        logger.info("Searching the %s template(s): %s",
+                                    resource_name, self.templates)
+                        for template in self.templates:
+                            params = {'where': json.dumps({'name': template, '_is_template': True})}
+                            response = self.backend.get(resource_name, params=params)
+                            if len(response['_items']) > 0:
+                                used_templates.append(response['_items'][0]['_id'])
+
+                                logger.info("-> found %s template '%s': %s",
+                                            resource_name, template, response['_items'][0]['_id'])
                             else:
-                                response2 = self.backend.get(field, params=params)
-                            if len(response2['_items']) > 0:
-                                response2 = response2['_items'][0]
-                                logger.info("Replaced %s = %s with found item _id",
-                                            field, item_data[field])
-                                item_data[field] = response2['_id']
-                            else:
-                                logger.info("Not found %s = %s, removing field!",
-                                            field, item_data[field])
-                                item_data.pop(field)
-                        continue
+                                print("-> %s template '%s' not found" % (resource_name, template))
+                                return False
 
-                if '_realm' not in item_data:
-                    item_data.update({'_realm': self.realm_all})
+                    # Template information if templating is required
+                    if used_templates:
+                        item_data.update({'_templates': used_templates,
+                                          '_templates_with_services': True})
 
-                # Exists in the backend, we should update if required...
-                if not self.dry_run:
-                    response = self.backend.patch(
-                        resource_name + '/' + response['_id'], item_data,
-                        headers=headers, inception=True
-                    )
-                else:
-                    response = {'_id': '_fake', '_etag': '_fake'}
-                    logger.info("Dry-run mode: should have updated an %s '%s' with %s",
-                                resource_name, name, item_data)
+                    for field in item_data.copy():
+                        logger.debug("Field: %s = %s", field, item_data[field])
+                        # Filter Eve extra fields
+                        if field in ['_created', '_updated', '_etag', '_links', '_status']:
+                            item_data.pop(field)
+                            continue
+                        # Filter specific backend inner computed fields
+                        # todo: list to be completed!
+                        if field in ['_overall_state_id']:
+                            item_data.pop(field)
+                            continue
 
-                logger.info("-> updated: '%s': %s, with %s",
-                            resource_name, response['_id'], item_data)
+                        # Manage potential object link fields
+                        if field not in ['realm', '_realm', '_templates',
+                                         'command', 'host', 'service',
+                                         'escalation_period', 'maintenance_period',
+                                         'snapshot_period', 'check_period', 'dependency_period',
+                                         'notification_period',
+                                         'host_notification_period',
+                                         'host_notification_commands',
+                                         'service_notification_period',
+                                         'service_notification_commands',
+                                         'check_command', 'event_handler', 'grafana', 'statsd']:
+                            continue
+
+                        field_values = item_data[field]
+                        if not isinstance(item_data[field], list):
+                            field_values = [item_data[field]]
+
+                        found = None
+                        for value in field_values:
+                            logger.debug(" - %s, single value: %s", field, value)
+                            try:
+                                int(value, 16)
+
+                                if not isinstance(item_data[field], list):
+                                    found = value
+                                else:
+                                    if found is None:
+                                        found = []
+                                    found.append(value)
+                            except TypeError:
+                                pass
+                            except ValueError:
+                                # Not an integer, consider an item name
+                                params = {'where': json.dumps({'name': value})}
+                                if field in ['escalation_period', 'maintenance_period',
+                                             'snapshot_period', 'check_period',
+                                             'dependency_period', 'notification_period',
+                                             'host_notification_period',
+                                             'service_notification_period']:
+                                    response2 = self.backend.get('timeperiod', params=params)
+                                elif field in ['_realm']:
+                                    response2 = self.backend.get('realm', params=params)
+                                elif field in ['check_command', 'event_handler',
+                                               'service_notification_commands',
+                                               'host_notification_commands']:
+                                    response2 = self.backend.get('command', params=params)
+                                elif field in ['_templates']:
+                                    params = {'where': json.dumps({'name': value,
+                                                                   '_is_template': True})}
+                                    response2 = self.backend.get(resource_name, params=params)
+                                else:
+                                    response2 = self.backend.get(field, params=params)
+
+                                if len(response2['_items']) > 0:
+                                    response2 = response2['_items'][0]
+                                    logger.info("Replaced %s = %s with found item _id",
+                                                field, value)
+                                    if not isinstance(item_data[field], list):
+                                        found = response2['_id']
+                                    else:
+                                        if found is None:
+                                            found = []
+                                        found.append(response2['_id'])
+
+                        if found is None:
+                            logger.info("Not found %s = %s, removing field!", field, field_values)
+                            item_data.pop(field)
+                        else:
+                            item_data[field] = found
+
+                    if '_realm' not in item_data:
+                        item_data.update({'_realm': self.default_realm})
+
+                    item_id = response['_id']
+                    if '_id' in item_data:
+                        item_data.pop('_id')
+
+                    # Exists in the backend, we should update if required...
+                    if not self.dry_run:
+                        response = self.backend.patch(
+                            resource_name + '/' + item_id, item_data,
+                            headers=headers, inception=True
+                        )
+                    else:
+                        response = {'_id': '_fake', '_etag': '_fake'}
+                        logger.info("Dry-run mode: should have updated an %s '%s' with %s",
+                                    resource_name, name, item_data)
+
+                    logger.info("-> updated: '%s': %s, with %s",
+                                resource_name, response['_id'], item_data)
 
                 return True
             else:
                 logger.info("-> %s '%s' not existing, it can be created.", resource_name, name)
 
-                if name is None:
+                if name is None and json_data is None:
                     logger.error("-> can not add a %s without name!", resource_name)
                     return False
 
-                # Data to update
-                item_data = {}
-                if self.include_read_data:
-                    # Include read data
-                    item_data = response
-                if name is not None:
-                    item_data = {
-                        'name': name,
-                    }
+                if json_data is None:
+                    json_data = {}
+                    if self.include_read_data:
+                        # Include read data
+                        json_data = response
 
-                used_templates = []
-                if self.templates is not None:
-                    logger.info("Searching the %s template(s): %s", resource_name, self.templates)
-                    for template in self.templates:
-                        params = {'where': json.dumps({'name': template, '_is_template': True})}
-                        response = self.backend.get(resource_name, params=params)
-                        if len(response['_items']) > 0:
-                            used_templates.append(response['_items'][0]['_id'])
+                if not isinstance(json_data, list):
+                    json_data = [json_data]
 
-                            logger.info("-> found %s template '%s': %s",
-                                        resource_name, template, response['_items'][0]['_id'])
-                        else:
-                            print("-> %s template '%s' not found" % (resource_name, template))
-                            return False
+                for json_item in json_data:
+                    # Data to update
+                    item_data = json_item
 
-                # Template information if templating is required
-                if used_templates:
-                    item_data.update({'_templates': used_templates,
-                                      '_templates_with_services': True})
-                if json_data is not None:
-                    item_data.update(json_data)
+                    if name is not None:
+                        item_data['name'] = name
+                        if resource_name == 'service' and '/' in name:
+                            splitted_name = name.split('/')
+                            item_data['name'] = splitted_name[1]
 
-                for field in item_data.copy():
-                    logger.debug("Field: %s = %s", field, item_data[field])
-                    # Filter Eve extra fields
-                    if field in ['_created', '_updated', '_etag', '_links', '_status']:
-                        item_data.pop(field)
-                        continue
-                    # Filter specific backend inner computed fields
-                    if field in ['_overall_state_id']:
-                        item_data.pop(field)
-                        continue
-                    # Manage potential object link fields
-                    if field in ['realm', 'command', 'host', 'service',
-                                 'check_period', 'notification_period',
-                                 'host_notification_period', 'service_notification_period',
-                                 'check_command', 'event_handler',
-                                 'grafana', 'statsd']:
-                        try:
-                            int(item_data[field])
-                        except TypeError:
-                            pass
-                        except ValueError:
-                            # Not an integer, consider an item name
-                            params = {'where': json.dumps({'name': item_data[field]})}
-                            if field in ['check_period', 'notification_period',
-                                         'host_notification_period', 'service_notification_period']:
-                                response2 = self.backend.get('timeperiod', params=params)
-                            elif field in ['check_command', 'event_handler']:
-                                response2 = self.backend.get('command', params=params)
+                    used_templates = []
+                    if self.templates is not None:
+                        logger.info("Searching the %s template(s): %s",
+                                    resource_name, self.templates)
+                        for template in self.templates:
+                            params = {'where': json.dumps({'name': template, '_is_template': True})}
+                            response = self.backend.get(resource_name, params=params)
+                            if len(response['_items']) > 0:
+                                used_templates.append(response['_items'][0]['_id'])
+
+                                logger.info("-> found %s template '%s': %s",
+                                            resource_name, template, response['_items'][0]['_id'])
                             else:
-                                response2 = self.backend.get(field, params=params)
-                            if len(response2['_items']) > 0:
-                                response2 = response2['_items'][0]
-                                logger.info("Replaced %s = %s with found item _id",
-                                            field, item_data[field])
-                                item_data[field] = response2['_id']
-                        else:
-                            logger.info("Not found %s = %s, removing field!",
-                                        field, item_data[field])
+                                print("-> %s template '%s' not found" % (resource_name, template))
+                                return False
+
+                    # Template information if templating is required
+                    if used_templates:
+                        item_data.update({'_templates': used_templates,
+                                          '_templates_with_services': True})
+
+                    for field in item_data.copy():
+                        logger.debug("Field: %s = %s", field, item_data[field])
+                        # Filter Eve extra fields
+                        if field in ['_created', '_updated', '_etag', '_links', '_status']:
                             item_data.pop(field)
-                        continue
+                            continue
+                        # Filter specific backend inner computed fields
+                        # todo: list to be completed!
+                        if field in ['_overall_state_id']:
+                            item_data.pop(field)
+                            continue
 
-                if '_realm' not in item_data:
-                    item_data.update({'_realm': self.realm_all})
+                        # Manage potential object link fields
+                        if field not in ['realm', '_realm', '_templates',
+                                         'command', 'host', 'service',
+                                         'escalation_period', 'maintenance_period',
+                                         'snapshot_period', 'check_period', 'dependency_period',
+                                         'notification_period',
+                                         'host_notification_period',
+                                         'host_notification_commands',
+                                         'service_notification_period',
+                                         'service_notification_commands',
+                                         'check_command', 'event_handler', 'grafana', 'statsd']:
+                            continue
 
-                if not self.dry_run:
-                    logger.info("-> trying to create the %s: %s, with: %s",
-                                resource_name, name, item_data)
-                    response = self.backend.post(resource_name, item_data, headers=None)
-                else:
-                    response = {'_id': '_fake', '_etag': '_fake'}
-                    logger.info("Dry-run mode: should have created an %s '%s' with %s",
-                                resource_name, name, item_data)
-                logger.info("-> created: '%s': %s, with %s",
-                            resource_name, response['_id'], item_data)
+                        field_values = item_data[field]
+                        if not isinstance(item_data[field], list):
+                            field_values = [item_data[field]]
+
+                        found = None
+                        for value in field_values:
+                            logger.debug(" - %s, single value: %s", field, value)
+                            try:
+                                int(value, 16)
+
+                                if not isinstance(item_data[field], list):
+                                    found = value
+                                else:
+                                    if found is None:
+                                        found = []
+                                    found.append(value)
+                            except TypeError:
+                                pass
+                            except ValueError:
+                                # Not an integer, consider an item name
+                                params = {'where': json.dumps({'name': value})}
+                                if field in ['escalation_period', 'maintenance_period',
+                                             'snapshot_period', 'check_period',
+                                             'dependency_period', 'notification_period',
+                                             'host_notification_period',
+                                             'service_notification_period']:
+                                    response2 = self.backend.get('timeperiod', params=params)
+                                elif field in ['_realm']:
+                                    response2 = self.backend.get('realm', params=params)
+                                elif field in ['check_command', 'event_handler',
+                                               'service_notification_commands',
+                                               'host_notification_commands']:
+                                    response2 = self.backend.get('command', params=params)
+                                elif field in ['_templates']:
+                                    params = {'where': json.dumps({'name': value,
+                                                                   '_is_template': True})}
+                                    response2 = self.backend.get(resource_name, params=params)
+                                else:
+                                    response2 = self.backend.get(field, params=params)
+
+                                if len(response2['_items']) > 0:
+                                    response2 = response2['_items'][0]
+                                    logger.info("Replaced %s = %s with found item _id",
+                                                field, value)
+                                    if not isinstance(item_data[field], list):
+                                        found = response2['_id']
+                                    else:
+                                        if found is None:
+                                            found = []
+                                        found.append(response2['_id'])
+
+                        if found is None:
+                            logger.info("Not found %s = %s, removing field!", field, field_values)
+                            item_data.pop(field)
+                        else:
+                            item_data[field] = found
+
+                    if '_realm' not in item_data:
+                        item_data.update({'_realm': self.default_realm})
+
+                    if '_id' in item_data:
+                        item_data.pop('_id')
+
+                    if not self.dry_run:
+                        logger.info("-> trying to create the %s: %s, with: %s",
+                                    resource_name, name, item_data)
+                        response = self.backend.post(resource_name, item_data, headers=None)
+                    else:
+                        response = {'_id': '_fake', '_etag': '_fake'}
+                        logger.info("Dry-run mode: should have created an %s '%s' with %s",
+                                    resource_name, name, item_data)
+                    logger.info("-> created: '%s': %s, with %s",
+                                resource_name, response['_id'], item_data)
 
                 return True
-        except BackendException as e:
+        except BackendException as e:  # pragma: no cover, should never happen
             print("Creation/update error for  '%s' : %s" % (resource_name, name))
             logger.exception(e)
             print("~~~~~~~~~~~~~~~~~~~~~~~~~~")

@@ -24,15 +24,14 @@ script:
   # Delete previously existing coverage results
   - coverage erase
   # Run test suite with py.test running its coverage plugin - for backend client library
-  - pytest --cov=alignak_backend_client test_*.py
+  - pytest -v --cov=alignak_backend_client test_*.py
   # Run test suite with py.test running its coverage plugin - for alignak-backend-cli utility
-  # - pytest --cov=backend_client --cov-config .coveragerc alignak-backend-cli-tests.py
+  - pytest -v --cov=backend_client --cov-config .coveragerc --cov-append alignak-backend-cli-tests.py
   # Report about coverage
   - coverage report -m
   # Test code static analysis
   - pep8 --max-line-length=100 --ignore='E402' test_*.py
   - pylint --rcfile=../.pylintrc test_*.py
-  - cd ..
   - cd ..
 
 after_success:
