@@ -26,7 +26,7 @@ script:
   # Run test suite with py.test running its coverage plugin - for backend client library
   - pytest -v --cov=alignak_backend_client test_*.py
   # Run test suite with py.test running its coverage plugin - for alignak-backend-cli utility
-  - pytest -v -s --cov=backend_client --cov-config .coveragerc --cov-append alignak-backend-cli-tests.py
+  - pytest -v --cov=backend_client --cov-config .coveragerc --cov-append alignak-backend-cli-tests.py
   # Report about coverage
   - coverage report -m
   # Test code static analysis

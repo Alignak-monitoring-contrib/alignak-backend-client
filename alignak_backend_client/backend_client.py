@@ -430,7 +430,7 @@ class BackendUpdate(object):
                           separators=(',', ': '), sort_keys=True)
         path = os.path.join(self.folder or os.getcwd(), filename)
         try:
-            dfile = open(path, "wb")
+            dfile = open(path, "wt")
             dfile.write(dump)
             dfile.close()
             return path
@@ -482,7 +482,7 @@ class BackendUpdate(object):
                     logger.info("-> dumping %ss list", resource_name)
                     for item in response:
                         # Filter fields prefixed with an _ (internal backend fields)
-                        for field in item.keys():
+                        for field in list(item):
                             if field in ['_created', '_updated', '_etag', '_links', '_status']:
                                 item.pop(field)
                                 continue
@@ -499,7 +499,7 @@ class BackendUpdate(object):
                                 for embedded_item in embedded_items:
                                     if not embedded_item:
                                         continue
-                                    for embedded_field in embedded_item.keys():
+                                    for embedded_field in list(embedded_item):
                                         if embedded_field.startswith('_'):
                                             embedded_item.pop(embedded_field)
 
@@ -550,7 +550,8 @@ class BackendUpdate(object):
 
             if resource_name == 'service' and '/' in name:
                 splitted_name = name.split('/')
-                name = splitted_name[0] + '_' + splitted_name[1]
+                # new_name = splitted_name[0] + '_' + splitted_name[1]
+                # name = splitted_name[1]
 
                 # Get host from name
                 response2 = self.backend.get(
@@ -586,7 +587,8 @@ class BackendUpdate(object):
                     response2 = self.backend.get('service', params=params)
                     if len(response2['_items']) > 0:
                         response['_services'] = response2['_items']
-                        logger.info("Got %d services for host '%s'", len(response2['_items']), name)
+                        logger.info("Got %d services for host '%s'",
+                                    len(response2['_items']), splitted_name[0])
                     else:
                         logger.warning("Not found host '%s'!", splitted_name[0])
                         return False
@@ -595,7 +597,7 @@ class BackendUpdate(object):
                 if not self.dry_run:
                     logger.info("-> dumping %s: %s", resource_name, name)
                     # Filter fields prefixed with an _ (internal backend fields)
-                    for field in response.keys():
+                    for field in list(response):
                         if field in ['_created', '_updated', '_etag', '_links', '_status']:
                             response.pop(field)
                             continue
@@ -613,7 +615,7 @@ class BackendUpdate(object):
                             for embedded_item in embedded_items:
                                 if not embedded_item:
                                     continue
-                                for embedded_field in embedded_item.keys():
+                                for embedded_field in list(embedded_item):
                                     if embedded_field.startswith('_'):
                                         embedded_item.pop(embedded_field)
 
@@ -622,6 +624,8 @@ class BackendUpdate(object):
                     if not self.quiet:
                         print(dump)
 
+                    if resource_name == 'service' and '/' in name:
+                        name = splitted_name[0] + '_' + splitted_name[1]
                     filename = self.file_dump(response,
                                               'alignak-object-dump-%s-%s.json'
                                               % (resource_name, name))
@@ -630,6 +634,8 @@ class BackendUpdate(object):
 
                     logger.info("-> dumped %s: %s", resource_name, name)
                 else:
+                    if resource_name == 'service' and '/' in name:
+                        name = splitted_name[0] + '_' + splitted_name[1]
                     logger.info("Dry-run mode: should have dumped an %s '%s'",
                                 resource_name, name)
 
@@ -764,7 +770,7 @@ class BackendUpdate(object):
                 params = {'where': json.dumps({'name': name})}
                 if resource_name == 'service' and '/' in name:
                     splitted_name = name.split('/')
-                    name = splitted_name[0] + '_' + splitted_name[1]
+                    # name = splitted_name[0] + '_' + splitted_name[1]
 
                     # Get host from name
                     response2 = self.backend.get(
@@ -825,6 +831,9 @@ class BackendUpdate(object):
 
                     if name is not None:
                         item_data['name'] = name
+                        if resource_name == 'service' and '/' in name:
+                            splitted_name = name.split('/')
+                            item_data['name'] = splitted_name[1]
 
                     used_templates = []
                     if self.templates is not None:
@@ -888,6 +897,8 @@ class BackendUpdate(object):
                                     if found is None:
                                         found = []
                                     found.append(value)
+                            except TypeError:
+                                pass
                             except ValueError:
                                 # Not an integer, consider an item name
                                 params = {'where': json.dumps({'name': value})}
@@ -930,10 +941,14 @@ class BackendUpdate(object):
                     if '_realm' not in item_data:
                         item_data.update({'_realm': self.default_realm})
 
+                    item_id = response['_id']
+                    if '_id' in item_data:
+                        item_data.pop('_id')
+
                     # Exists in the backend, we should update if required...
                     if not self.dry_run:
                         response = self.backend.patch(
-                            resource_name + '/' + response['_id'], item_data,
+                            resource_name + '/' + item_id, item_data,
                             headers=headers, inception=True
                         )
                     else:
@@ -967,6 +982,9 @@ class BackendUpdate(object):
 
                     if name is not None:
                         item_data['name'] = name
+                        if resource_name == 'service' and '/' in name:
+                            splitted_name = name.split('/')
+                            item_data['name'] = splitted_name[1]
 
                     used_templates = []
                     if self.templates is not None:
@@ -1030,6 +1048,8 @@ class BackendUpdate(object):
                                     if found is None:
                                         found = []
                                     found.append(value)
+                            except TypeError:
+                                pass
                             except ValueError:
                                 # Not an integer, consider an item name
                                 params = {'where': json.dumps({'name': value})}
@@ -1071,6 +1091,9 @@ class BackendUpdate(object):
 
                     if '_realm' not in item_data:
                         item_data.update({'_realm': self.default_realm})
+
+                    if '_id' in item_data:
+                        item_data.pop('_id')
 
                     if not self.dry_run:
                         logger.info("-> trying to create the %s: %s, with: %s",

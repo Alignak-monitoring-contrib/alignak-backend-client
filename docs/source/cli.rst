@@ -98,6 +98,24 @@ To get a specific element (eg. an host named *host_name*) from the backend, run 
 This will store the result in a file named *alignak-object-dump-host-host_name.json* in the current directory. As for the list, the `-e` parameter will embed the linked elements.
 
 
+To get the list of all the services of an host from the backend, run this command:
+::
+
+    alignak-backend-cli -t service list host_name/*
+
+This will store the list of all the host *host_name* in a file.
+
+
+To get an host and the list of all its services, run this command:
+::
+
+    alignak-backend-cli -t host get host_name/*
+
+This will store the list of all the host *host_name* in a file.
+
+
+
+
 Delete elements
 ~~~~~~~~~~~~~~~
 

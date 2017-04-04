@@ -250,6 +250,11 @@ class TestAlignakBackendCli(unittest2.TestCase):
         assert exit_code == 0
 
         # Get hosts and services lists
+        # All the hosts (implicit default value)
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" list' % work_dir
+        ))
+        assert exit_code == 0
         # All the hosts
         exit_code = subprocess.call(shlex.split(
             'python ../alignak_backend_client/backend_client.py -f "%s" -t host list' % work_dir
@@ -265,6 +270,24 @@ class TestAlignakBackendCli(unittest2.TestCase):
             'python ../alignak_backend_client/backend_client.py -f "%s" -t host get host_test' % work_dir
         ))
         assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t host -e get host_test' % work_dir
+        ))
+        assert exit_code == 0
+        # A specific host and its services in the same output
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t host get host_test/*' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t host -e get host_test/*' % work_dir
+        ))
+        assert exit_code == 0
+        # A specific host service
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t service get host_test/nsca_services' % work_dir
+        ))
+        assert exit_code == 0
         # All the services
         exit_code = subprocess.call(shlex.split(
             'python ../alignak_backend_client/backend_client.py -f "%s" -t service list' % work_dir
@@ -275,6 +298,11 @@ class TestAlignakBackendCli(unittest2.TestCase):
             'python ../alignak_backend_client/backend_client.py -f "%s" -t service list host_test/*' % work_dir
         ))
         assert exit_code == 0
+        # The services of an unknown host
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t service list host_unknown/*' % work_dir
+        ))
+        assert exit_code == 2
         # A specific service of the host host_test
         exit_code = subprocess.call(shlex.split(
             'python ../alignak_backend_client/backend_client.py -f "%s" -t service list host_test/nsca_cpu' % work_dir
@@ -300,18 +328,9 @@ class TestAlignakBackendCli(unittest2.TestCase):
             'python ../alignak_backend_client/backend_client.py -f "%s" -t host -d unknown.json update host_test' % work_dir
         ))
         assert exit_code == 2
-        # And again...
-        exit_code = subprocess.call(shlex.split(
-            'python ../alignak_backend_client/backend_client.py -f "%s" -t host -d unknown.json update host_test' % work_dir
-        ))
-        assert exit_code == 2
-        # And again... re-using read data
-        exit_code = subprocess.call(shlex.split(
-            'python ../alignak_backend_client/backend_client.py -f "%s" -t host -d unknown.json update -i host_test' % work_dir
-        ))
-        assert exit_code == 2
 
-        # First, dry-run ... it will not update!
+        # Update an host
+        #  First, dry-run ... it will not update!
         exit_code = subprocess.call(shlex.split(
             'python ../alignak_backend_client/backend_client.py -f "%s" -t host -d example_host_livestate.json -c update host_test' % work_dir
         ))
@@ -321,8 +340,29 @@ class TestAlignakBackendCli(unittest2.TestCase):
             'python ../alignak_backend_client/backend_client.py -f "%s" -t host -d example_host_livestate.json update host_test' % work_dir
         ))
         assert exit_code == 0
+        # And again...
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t host -d example_host_livestate.json update host_test' % work_dir
+        ))
+        assert exit_code == 0
+        # And again... re-using read data
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t host -d example_host_livestate.json update -i host_test' % work_dir
+        ))
+        assert exit_code == 0
+
+        # Update a service
+        #  First, dry-run ... it will not update!
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t service -d example_service_livestate.json -c update host_test/nsca_cpu' % work_dir
+        ))
+        assert exit_code == 0
         exit_code = subprocess.call(shlex.split(
             'python ../alignak_backend_client/backend_client.py -f "%s" -t service -d example_service_livestate.json update host_test/nsca_cpu' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t service -d example_service_livestate.json update -i host_test/nsca_cpu' % work_dir
         ))
         assert exit_code == 0
 
