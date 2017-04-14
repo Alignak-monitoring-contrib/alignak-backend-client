@@ -38,9 +38,7 @@
         "notifications_enabled": true,
         "passive_checks_enabled": true,
         "retry_interval": 1,
-        "tags": [
-            "generic-passive-host"
-        ]
+        "tags": []
     },
     {
         "_is_template": true,
@@ -69,8 +67,6 @@
         "initial_state": "x",
         "name": "windows-passive-host",
         "passive_checks_enabled": true,
-        "tags": [
-            "windows-passive-host"
-        ]
+        "tags": []
     }
 ]

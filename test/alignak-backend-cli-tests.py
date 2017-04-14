@@ -309,7 +309,83 @@ class TestAlignakBackendCli(unittest2.TestCase):
         ))
         assert exit_code == 0
 
-    def test_start_03_update(self):
+    def test_start_03_get_elements(self):
+        # pylint: disable=no-self-use
+        """ CLI to get default backend objects"""
+
+        # work_dir = os.path.abspath(os.path.dirname(__file__))
+        work_dir = '/tmp'
+        files = ['alignak-object-list-realms.json',
+                 'alignak-object-list-commands.json',
+                 'alignak-object-list-timeperiods.json',
+                 'alignak-object-list-usergroups.json',
+                 'alignak-object-list-hostgroups.json',
+                 'alignak-object-list-servicegroups.json',
+                 'alignak-model-list-users.json',
+                 'alignak-model-list-hosts.json',
+                 'alignak-model-list-services.json',
+                 'alignak-object-list-users.json',
+                 'alignak-object-list-hosts.json',
+                 'alignak-object-list-services.json']
+
+        for filename in files:
+            if os.path.exists(os.path.join(work_dir, filename)):
+                os.remove(os.path.join(work_dir, filename))
+
+        print("Getting the backend default elements...")
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t realm list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t command list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t timeperiod list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t usergroup list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t hostgroup list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t servicegroup list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t user -m list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t host -m list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t service -m list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t user list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t host list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t service list' % work_dir
+        ))
+        assert exit_code == 0
+        for filename in files:
+            print("Exists %s?" % filename)
+            assert os.path.exists(os.path.join(work_dir, filename))
+
+    def test_start_04_update(self):
         # pylint: disable=no-self-use
         """ CLI to create backend objects"""
 
@@ -376,7 +452,7 @@ class TestAlignakBackendCli(unittest2.TestCase):
         ))
         assert exit_code == 0
 
-    def test_start_04_delete(self):
+    def test_start_05_delete(self):
         # pylint: disable=no-self-use
         """ CLI to delete backend objects"""
 
@@ -435,3 +511,4 @@ class TestAlignakBackendCli(unittest2.TestCase):
             'python ../alignak_backend_client/backend_client.py -f "%s" -t service list' % work_dir
         ))
         assert exit_code == 0
+

@@ -208,8 +208,8 @@ logging.basicConfig(level=logging.DEBUG,
 logger = logging.getLogger('alignak_backend_client.client')
 logger.setLevel('INFO')
 
-# todo: use the same version as the main library
-__version__ = "0.7.0"
+# Use the same version as the main alignak backend
+__version__ = "0.9.0"
 
 
 class BackendUpdate(object):
@@ -474,7 +474,7 @@ class BackendUpdate(object):
                 response2 = self.backend.get(
                     'host', params={'where': json.dumps({'name': splitted_name[0],
                                                          '_is_template': self.model})})
-                if len(response2['_items']) > 0:
+                if response2['_items']:
                     host = response2['_items'][0]
                     logger.info("Got host '%s' for the service '%s'",
                                 splitted_name[0], splitted_name[1])
@@ -488,7 +488,7 @@ class BackendUpdate(object):
                 params.update({'embedded': json.dumps(self.embedded_resources[resource_name])})
 
             rsp = self.backend.get_all(resource_name, params=params)
-            if len(rsp['_items']) > 0 and rsp['_status'] == 'OK':
+            if rsp['_items'] and rsp['_status'] == 'OK':
                 response = rsp['_items']
 
                 logger.info("-> found %ss", resource_name)
@@ -573,7 +573,7 @@ class BackendUpdate(object):
                 # Get host from name
                 response2 = self.backend.get(
                     'host', params={'where': json.dumps({'name': splitted_name[0]})})
-                if len(response2['_items']) > 0:
+                if response2['_items']:
                     host = response2['_items'][0]
                     logger.info("Got host '%s' for the service '%s'",
                                 splitted_name[0], splitted_name[1])
@@ -589,7 +589,7 @@ class BackendUpdate(object):
                 params.update({'embedded': json.dumps(self.embedded_resources[resource_name])})
 
             response = self.backend.get(resource_name, params=params)
-            if len(response['_items']) > 0:
+            if response['_items']:
                 response = response['_items'][0]
 
                 logger.info("-> found %s '%s': %s", resource_name, name, response['_id'])
@@ -602,7 +602,7 @@ class BackendUpdate(object):
                             {'embedded': json.dumps(self.embedded_resources['service'])})
 
                     response2 = self.backend.get('service', params=params)
-                    if len(response2['_items']) > 0:
+                    if response2['_items']:
                         response['_services'] = response2['_items']
                         logger.info("Got %d services for host '%s'",
                                     len(response2['_items']), splitted_name[0])
@@ -695,7 +695,7 @@ class BackendUpdate(object):
                     # Get host from name
                     response2 = self.backend.get(
                         'host', params={'where': json.dumps({'name': splitted_name[0]})})
-                    if len(response2['_items']) > 0:
+                    if response2['_items']:
                         host = response2['_items'][0]
                         logger.info("Got host '%s' for the service '%s'",
                                     splitted_name[0], splitted_name[1])
@@ -710,7 +710,7 @@ class BackendUpdate(object):
                                                        'host': host['_id']})}
 
                 response = self.backend.get_all(resource_name, params=params)
-                if len(response['_items']) > 0:
+                if response['_items']:
                     logger.info("-> found %d matching %s", len(response['_items']), resource_name)
                     for item in response['_items']:
                         logger.info("-> found %s '%s': %s", resource_name, name, item['name'])
@@ -745,7 +745,7 @@ class BackendUpdate(object):
 
     def create_update_resource(self, resource_name, name, update=False):
         # pylint: disable=too-many-return-statements, too-many-locals
-        # pylint: disable=redefined-variable-type, too-many-nested-blocks
+        # pylint: disable=too-many-nested-blocks
         """Create or update a specific resource
 
         :param resource_name: backend resource endpoint (eg. host, user, ...)
@@ -771,11 +771,11 @@ class BackendUpdate(object):
                 logger.info("Got provided data: %s", json_data)
                 if input_file is not sys.stdin:
                     input_file.close()
-            except IOError as e:
-                logger.exception("Error reading data file: %s", e)
+            except IOError:
+                logger.error("Error reading data file: %s", path)
                 return False
-            except ValueError as e:
-                logger.exception("Error malformed data file: %s", e)
+            except ValueError:
+                logger.error("Error malformed data file: %s", path)
                 return False
 
         if name is None and json_data is None:
@@ -791,14 +791,13 @@ class BackendUpdate(object):
                 response = self.backend.get(
                     resource_name, params={'where': json.dumps({'name': template,
                                                                 '_is_template': True})})
-                if len(response['_items']) > 0:
+                if response['_items']:
                     used_templates.append(response['_items'][0]['_id'])
 
                     logger.info("-> found %s template '%s': %s",
                                 resource_name, template, response['_items'][0]['_id'])
                 else:
-                    logger.error("-> %s required template not found '%s': %s",
-                                 resource_name, template)
+                    logger.error("-> %s required template not found '%s'", resource_name, template)
                     return False
 
         try:
@@ -808,9 +807,11 @@ class BackendUpdate(object):
             if not isinstance(json_data, list):
                 json_data = [json_data]
 
+            logger.info("Got %d %ss", len(json_data), resource_name)
+            count = 0
             for json_item in json_data:
-                logger.debug("-> json item: %s", json_item)
-                if name is None and 'name' not in json_item or not json_item['name']:
+                logger.info("-> json item: %s", json_item)
+                if name is None and ('name' not in json_item or not json_item['name']):
                     logger.warning("-> unnamed '%s'!", resource_name)
                     continue
 
@@ -825,7 +826,7 @@ class BackendUpdate(object):
                     # Get host from name
                     resp_host = self.backend.get(
                         'host', params={'where': json.dumps({'name': splitted_name[0]})})
-                    if len(resp_host['_items']) > 0:
+                    if resp_host['_items']:
                         host = resp_host['_items'][0]
                         logger.info("Got host '%s' for the service '%s'",
                                     splitted_name[0], splitted_name[1])
@@ -841,18 +842,20 @@ class BackendUpdate(object):
 
                 logger.info("Trying to get %s: '%s'", resource_name, item_name)
                 response = self.backend.get(resource_name, params=params)
-                if len(response['_items']) > 0:
+                if response['_items']:
                     found_item = response['_items'][0]
-                    logger.info("-> found %s '%s': %s", resource_name, name, found_item['_id'])
+                    found_id = found_item['_id']
+                    found_etag = found_item['_etag']
+                    logger.info("-> found %s '%s': %s", resource_name, item_name, found_id)
 
                     if not update:
                         logger.warning("-> '%s' %s cannot be created because it already exists!",
-                                       resource_name, name)
+                                       resource_name, item_name)
                         continue
                 else:
                     if update:
                         logger.warning("-> '%s' %s cannot be updated because it does not exist!",
-                                       resource_name, name)
+                                       resource_name, item_name)
                         continue
 
                 # Item data updated with provided information if some
@@ -932,12 +935,12 @@ class BackendUpdate(object):
                                 response2 = self.backend.get('command', params=field_params)
                             elif field in ['_templates']:
                                 field_params = {'where': json.dumps({'name': value,
-                                                               '_is_template': True})}
+                                                                     '_is_template': True})}
                                 response2 = self.backend.get(resource_name, params=field_params)
                             else:
                                 response2 = self.backend.get(field, params=field_params)
 
-                            if len(response2['_items']) > 0:
+                            if response2['_items']:
                                 response2 = response2['_items'][0]
                                 logger.info("Replaced %s = %s with found item _id",
                                             field, value)
@@ -963,33 +966,43 @@ class BackendUpdate(object):
 
                 if not update:
                     # Trying to create a new element
+                    logger.info("-> trying to create the %s: %s.", resource_name, item_name)
+                    logger.debug("-> with: %s.", item_data)
                     if not self.dry_run:
-                        logger.info("-> trying to create the %s: %s, with: %s.",
-                                    resource_name, item_name, item_data)
                         response = self.backend.post(resource_name, item_data, headers=None)
-                        logger.info("-> created: '%s': %s, with %s",
-                                    resource_name, response['_id'], item_data)
                     else:
-                        response = {'_id': '_fake', '_etag': '_fake'}
-                        logger.info("Dry-run mode: should have created an %s '%s' "
-                                    "with: %s.", resource_name, name, item_data)
-                    return True
+                        response = {'_status': 'OK', '_id': '_fake', '_etag': '_fake'}
                 else:
                     # Trying to update an element
+                    logger.info("-> trying to update the %s: %s.", resource_name, item_name)
+                    logger.debug("-> with: %s.", item_data)
                     if not self.dry_run:
-                        headers = {'Content-Type': 'application/json',
-                                   'If-Match': found_item['_etag']}
-                        logger.info("-> trying to update the %s: %s, with: %s.",
-                                    resource_name, item_name, item_data)
-                        response = self.backend.patch(resource_name + '/' + found_item['_id'],
+                        headers = {'Content-Type': 'application/json', 'If-Match': found_etag}
+                        response = self.backend.patch(resource_name + '/' + found_id,
                                                       item_data, headers=headers, inception=True)
-                        logger.info("-> updated: '%s': %s, with %s",
-                                    resource_name, response['_id'], item_data)
                     else:
-                        response = {'_id': '_fake', '_etag': '_fake'}
-                        logger.info("Dry-run mode: should have updated an %s '%s' with %s",
-                                    resource_name, name, item_data)
-                    return True
+                        response = {'_status': 'OK', '_id': '_fake', '_etag': '_fake'}
+
+                if response['_status'] == 'ERR':
+                    logger.warning("Response: %s", response)
+                    return False
+
+                if not update:
+                    # Created a new element
+                    if not self.dry_run:
+                        logger.info("-> created: '%s': %s", resource_name, response['_id'])
+                    else:
+                        logger.info("Dry-run mode: should have created an %s '%s'",
+                                    resource_name, name)
+                else:
+                    # Updated an element
+                    if not self.dry_run:
+                        logger.info("-> updated: '%s': %s", resource_name, response['_id'])
+                    else:
+                        logger.info("Dry-run mode: should have updated an %s '%s'",
+                                    resource_name, name)
+                count = count + 1
+
         except BackendException as exp:  # pragma: no cover, should never happen
             logger.exception("Exception: %s", exp)
             logger.error("Response: %s", exp.response)
@@ -997,6 +1010,10 @@ class BackendUpdate(object):
             print("~~~~~~~~~~~~~~~~~~~~~~~~~~")
             print("Exiting with error code: 5")
             return False
+
+        if count == len(json_data):
+            return True
+        return False
 
 
 def main():
