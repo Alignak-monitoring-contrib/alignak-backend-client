@@ -893,10 +893,9 @@ class BackendUpdate(object):
                                      'escalation_period', 'maintenance_period',
                                      'snapshot_period', 'check_period', 'dependency_period',
                                      'notification_period', 'host_notification_period',
-                                     'escalation_period',
-                                     'host_notification_commands',
-                                     'service_notification_period',
-                                     'service_notification_commands',
+                                     'escalation_period', 'service_notification_period',
+                                     'host_notification_commands', 'service_notification_commands',
+                                     'service_dependencies',
                                      'check_command', 'event_handler', 'grafana', 'statsd']:
                         continue
 
@@ -929,6 +928,8 @@ class BackendUpdate(object):
                                 response2 = self.backend.get('timeperiod', params=field_params)
                             elif field in ['_realm']:
                                 response2 = self.backend.get('realm', params=field_params)
+                            elif field in ['service_dependencies']:
+                                response2 = self.backend.get('service', params=field_params)
                             elif field in ['check_command', 'event_handler',
                                            'service_notification_commands',
                                            'host_notification_commands']:
@@ -1035,7 +1036,7 @@ def main():
         else:
             if not bc.item:
                 logger.error("Can not %s a %s with no name!", bc.action, bc.item_type)
-                logger.error("Perharps you missed some parameters, run 'alignak-backend-client -h'")
+                logger.error("Perharps you missed some parameters, run 'alignak-backend-cli -h'")
                 exit(64)
             success = bc.get_resource(bc.item_type, bc.item)
 
