@@ -958,9 +958,13 @@ class BackendUpdate(object):
                     else:
                         item_data[field] = found
 
-                if '_realm' not in item_data:
+                if resource_name not in ['realm'] and '_realm' not in item_data:
                     logger.info("add default realm to the data")
                     item_data.update({'_realm': self.default_realm})
+
+                if resource_name in ['realm'] and '_realm' not in item_data:
+                    logger.info("add parent realm to the data")
+                    item_data.update({'_parent': self.default_realm})
 
                 if '_id' in item_data:
                     item_data.pop('_id')

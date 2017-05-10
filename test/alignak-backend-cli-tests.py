@@ -220,6 +220,23 @@ class TestAlignakBackendCli(unittest2.TestCase):
         ))
         assert exit_code == 0
 
+        # Create a realm
+        # First, dry-run ... it will not create!
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -t realm -c add test_realm'
+        ))
+        assert exit_code == 0
+        # Then we create :)
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -t realm add test_realm'
+        ))
+        assert exit_code == 0
+        # Already exists!
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -t realm add test_realm'
+        ))
+        assert exit_code == 2
+
         # Create hosts
         # First, dry-run ... it will not create!
         exit_code = subprocess.call(shlex.split(
