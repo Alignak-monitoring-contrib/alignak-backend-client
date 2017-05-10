@@ -444,11 +444,27 @@ class TestAlignakBackendCli(unittest2.TestCase):
 
         # Get hosts and services lists
         exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -c -t host list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
             'python ../alignak_backend_client/backend_client.py -f "%s" -t host list' % work_dir
         ))
         assert exit_code == 0
         exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -c -t service list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
             'python ../alignak_backend_client/backend_client.py -f "%s" -t service list' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -c -t service list host_test/*' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t service list host_test/*' % work_dir
         ))
         assert exit_code == 0
 
