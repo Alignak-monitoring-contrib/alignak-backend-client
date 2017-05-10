@@ -515,18 +515,17 @@ class Backend(object):
                 )
                 resp = json.loads(response.content)
             logger.debug("post, response: %s", resp)
-        except ValueError as e:  # pragma: no cover - should never happen now...
-            logger.error("Exception, error: %s", str(e))
-            logger.error("traceback: %s", traceback.format_exc())
-            raise BackendException(1003, "Exception: %s" % (str(e)))
-
+        # except ValueError as e:  # pragma: no cover - should never happen now...
+        #     logger.error("Exception, error: %s", str(e))
+        #     logger.error("traceback: %s", traceback.format_exc())
+        #     raise BackendException(1003, "Exception: %s" % (str(e)))
+        #
         except RequestsConnectionError as e:
             logger.error("Backend connection error, error: %s", str(e))
             raise BackendException(1000, "Backend connection error")
 
         except Exception as e:  # pragma: no cover - should never happen now...
-            logger.error("Exception, error: %s", str(e))
-            logger.error("traceback: %s", traceback.format_exc())
+            logger.exception("Exception, error: %s", e)
             # resp = response
             logger.error(
                 "Response is not JSON formatted: %d / %s", response.status_code, response.content
