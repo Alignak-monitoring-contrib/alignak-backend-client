@@ -166,13 +166,13 @@ class Backend(object):
                 return False
             response.raise_for_status()
         except Timeout as e:  # pragma: no cover - need specific backend tests
-            logger.error("Backend connection timeout, error: %s", str(e))
+            logger.warning("Backend connection timeout, error: %s", str(e))
             raise BackendException(1002, "Backend connection timeout")
         except HTTPError as e:  # pragma: no cover - need specific backend tests
             logger.error("Backend HTTP error, error: %s", str(e))
             raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
         except RequestsConnectionError as e:
-            logger.error("Backend connection error, error: %s", str(e))
+            logger.warning("Backend connection error, error: %s", str(e))
             raise BackendException(1000, "Backend connection error")
         except Exception as e:  # pragma: no cover - security ...
             logger.error("Backend connection exception, error: %s / %s", type(e), str(e))
@@ -232,13 +232,13 @@ class Backend(object):
             )
             response.raise_for_status()
         except Timeout as e:  # pragma: no cover - need specific backend tests
-            logger.error("Backend connection timeout, error: %s", str(e))
+            logger.warning("Backend connection timeout, error: %s", str(e))
             raise BackendException(1002, "Backend connection timeout")
         except HTTPError as e:  # pragma: no cover - need specific backend tests
             logger.error("Backend HTTP error, error: %s", str(e))
             raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
         except RequestsConnectionError as e:  # pragma: no cover - need specific backend tests
-            logger.error("Backend connection error, error: %s", str(e))
+            logger.warning("Backend connection error, error: %s", str(e))
             raise BackendException(1000, "Backend connection error")
         except Exception as e:  # pragma: no cover - security ...
             logger.error("Backend connection exception, error: %s / %s", type(e), str(e))
@@ -326,10 +326,12 @@ class Backend(object):
             logger.debug("get, response: %s", response)
             response.raise_for_status()
 
+        except Timeout as e:  # pragma: no cover - need specific backend tests
+            logger.warning("Backend connection timeout, error: %s", str(e))
+            raise BackendException(1002, "Backend connection timeout")
         except RequestsConnectionError as e:
-            logger.error("Backend connection error, error: %s", str(e))
+            logger.warning("Backend connection error, error: %s", str(e))
             raise BackendException(1000, "Backend connection error")
-
         except HTTPError as e:  # pragma: no cover - need specific backend tests
             if e.response.status_code == 404:
                 raise BackendException(404, 'Not found')
@@ -520,10 +522,12 @@ class Backend(object):
         #     logger.error("traceback: %s", traceback.format_exc())
         #     raise BackendException(1003, "Exception: %s" % (str(e)))
         #
+        except Timeout as e:  # pragma: no cover - need specific backend tests
+            logger.warning("Backend connection timeout, error: %s", str(e))
+            raise BackendException(1002, "Backend connection timeout")
         except RequestsConnectionError as e:
-            logger.error("Backend connection error, error: %s", str(e))
+            logger.warning("Backend connection error, error: %s", str(e))
             raise BackendException(1000, "Backend connection error")
-
         except Exception as e:  # pragma: no cover - should never happen now...
             logger.exception("Exception, error: %s", e)
             # resp = response
@@ -609,10 +613,12 @@ class Backend(object):
                 headers=headers,
                 auth=HTTPBasicAuth(self.token, '')
             )
+        except Timeout as e:  # pragma: no cover - need specific backend tests
+            logger.warning("Backend connection timeout, error: %s", str(e))
+            raise BackendException(1002, "Backend connection timeout")
         except RequestsConnectionError as e:
-            logger.error("Backend connection error, error: %s", str(e))
+            logger.warning("Backend connection error, error: %s", str(e))
             raise BackendException(1000, "Backend connection error")
-
         except Exception as e:  # pragma: no cover - should never happen now...
             logger.error("Exception, error: %s", str(e))
             logger.error("traceback: %s", traceback.format_exc())
@@ -690,8 +696,11 @@ class Backend(object):
             response = {"_status": "OK"}
             return response
         except Timeout as e:  # pragma: no cover - need specific backend tests
-            logger.error("Backend connection timeout, error: %s", str(e))
+            logger.warning("Backend connection timeout, error: %s", str(e))
             raise BackendException(1002, "Backend connection timeout")
+        except RequestsConnectionError as e:
+            logger.warning("Backend connection error, error: %s", str(e))
+            raise BackendException(1000, "Backend connection error")
         except HTTPError as e:  # pragma: no cover - need specific backend tests
             logger.error("Backend HTTP error, error: %s", str(e))
             raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
