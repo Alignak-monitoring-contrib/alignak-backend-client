@@ -92,7 +92,7 @@ class BackendException(Exception):
 
     def __str__(self):
         """Exception to String"""
-        return "Backend error code %d: %s" % (self.code, self.message)
+        return "Backend error code %d: %s, response: %s" % (self.code, self.message, self.response)
 
 
 class Backend(object):
