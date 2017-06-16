@@ -22,10 +22,10 @@ alignak-backend-cli command line interface::
         alignak-backend-cli [-h]
         alignak-backend-cli [-V]
         alignak-backend-cli [-v] [-q] [-c] [-l] [-m] [-e] [-i]
-                            [-b=url] [-u=username] [-p=password]
-                            [-d=data]
-                            [-f=folder]
-                            [-T=template] [-t=type] [<action>] [<item>]
+                            [-b url] [-u username] [-p password]
+                            [-d data]
+                            [-f folder]
+                            [-T template] [-t type] [<action>] [<item>]
 
     Options:
         -h, --help                  Show this screen.
@@ -137,7 +137,7 @@ alignak-backend-cli command line interface::
 
     Use cases to update data:
         Update an item into the backend (with some data):
-            alignak-backend-cli --data="./update_host.json" update test_host
+            alignak-backend-cli --data "./update_host.json" update test_host
             This will update an host named test_host with the data that are read from the
             JSON file ./update_host.json
 
@@ -160,7 +160,7 @@ alignak-backend-cli command line interface::
         list of the available endpoints and their data fields.
 
         For a service specify the name as 'host_name/service_name' to get a service for a
-        specific host, else the script will return the first serice with the required name
+        specific host, else the script will return the first service with the required name
 
         By default, the script embeds in the provided result all the possible embeddable data.
         As such, when you get a service, you will also get its host, check period, ...
