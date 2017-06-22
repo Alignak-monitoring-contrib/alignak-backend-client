@@ -62,7 +62,7 @@ alignak-backend-cli command line interface::
             alignak-backend-cli --version
 
         Specify backend parameters if they are different from the default
-            alignak-backend-cli -b=http://127.0.0.1:5000 -u=admin -p=admin get host_name
+            alignak-backend-cli -b http://127.0.0.1:5000 -u admin -p admin get host_name
 
     Actions:
         'get' to get an item in the backend
@@ -895,7 +895,7 @@ class BackendUpdate(object):
                                      'notification_period', 'host_notification_period',
                                      'escalation_period', 'service_notification_period',
                                      'host_notification_commands', 'service_notification_commands',
-                                     'service_dependencies',
+                                     'service_dependencies', 'users', 'usergroups',
                                      'check_command', 'event_handler', 'grafana', 'statsd']:
                         continue
 
@@ -930,6 +930,10 @@ class BackendUpdate(object):
                                 response2 = self.backend.get('realm', params=field_params)
                             elif field in ['service_dependencies']:
                                 response2 = self.backend.get('service', params=field_params)
+                            elif field in ['users']:
+                                response2 = self.backend.get('user', params=field_params)
+                            elif field in ['usergroups']:
+                                response2 = self.backend.get('usergroup', params=field_params)
                             elif field in ['check_command', 'event_handler',
                                            'service_notification_commands',
                                            'host_notification_commands']:
