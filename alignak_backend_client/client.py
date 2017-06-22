@@ -303,8 +303,8 @@ class Backend(object):
 
         :param endpoint: endpoint (API URL) relative from root endpoint
         :type endpoint: str
-        :param params: list of parameters for the backend API
-        :type params: list
+        :param params: parameters for the backend API
+        :type params: dict
         :return: list of properties when query item | list of items when get many items
         :rtype: list
         """
