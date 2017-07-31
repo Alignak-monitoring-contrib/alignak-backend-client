@@ -664,6 +664,117 @@ class Backend(object):
 
             return response.json()
 
+    def put(self, endpoint, data, headers=None, inception=False):
+        """
+        Method to replace an item
+
+        The headers must include an If-Match containing the object _etag.
+            headers = {'If-Match': contact_etag}
+
+        The data dictionary contain all fields.
+
+        If the puting fails because the _etag object do not match with the provided one, a
+        BackendException is raised with code = 412.
+
+        If inception is True, this method makes a new get request on the endpoint to refresh the
+        _etag and then a new put is called.
+
+        If an HTTP 412 error occurs, a BackendException is raised. This exception is:
+        - code: 412
+        - message: response content
+        - response: backend response
+
+        All other HTTP error raises a BackendException.
+        If some _issues are provided by the backend, this exception is:
+        - code: HTTP error code
+        - message: response content
+        - response: JSON encoded backend response (including '_issues' dictionary ...)
+
+        If no _issues are provided and an _error is signaled by the backend, this exception is:
+        - code: backend error code
+        - message: backend error message
+        - response: JSON encoded backend response
+
+        :param endpoint: endpoint (API URL)
+        :type endpoint: str
+        :param data: properties of item to update
+        :type data: dict
+        :param headers: headers (example: Content-Type). 'If-Match' required
+        :type headers: dict
+        :param inception: if True tries to get the last _etag
+        :type inception: bool
+        :return: dictionary containing put response from the backend
+        :rtype: dict
+        """
+        if not self.token:
+            logger.error("Authentication is required for put an object.")
+            raise BackendException(1001, "Access denied, please login before trying to put")
+
+        if not headers:
+            logger.error("Header If-Match is required for puting an object.")
+            raise BackendException(1005, "Header If-Match required for puting an object")
+
+        logger.debug("put, endpoint: %s", urljoin(self.url_endpoint_root, endpoint))
+        logger.debug("put, headers: %s", headers)
+        logger.debug("put, data: %s", data)
+        try:
+            response = requests.put(
+                urljoin(self.url_endpoint_root, endpoint),
+                json=data,
+                headers=headers,
+                auth=HTTPBasicAuth(self.token, '')
+            )
+        except Timeout as e:  # pragma: no cover - need specific backend tests
+            logger.warning("Backend connection timeout, error: %s", str(e))
+            raise BackendException(1002, "Backend connection timeout")
+        except RequestsConnectionError as e:
+            logger.warning("Backend connection error, error: %s", str(e))
+            raise BackendException(1000, "Backend connection error")
+        except Exception as e:  # pragma: no cover - should never happen now...
+            logger.error("Exception, error: %s", str(e))
+            logger.error("traceback: %s", traceback.format_exc())
+            raise BackendException(
+                1003, "Exception error: %s" % (str(e)), response
+            )
+
+        logger.debug("put, response: %s", response)
+        if response.status_code == 200:
+            return response.json()
+        elif response.status_code == 412:
+            # 412 means Precondition failed, but confirm ...
+            if inception:
+                # update etag and retry to put
+                resp = self.get(endpoint)
+                headers['If-Match'] = resp['_etag']
+                return self.put(
+                    endpoint,
+                    data=data, headers=headers, inception=False
+                )
+            else:
+                raise BackendException(412, response.content, response)
+        else:  # pragma: no cover - should never occur
+            logger.error(
+                "Puting failed, response is: %d / %s",
+                response.status_code, response.content
+            )
+            resp = response.json()
+            if '_status' in resp:
+                # Considering an information is returned if a _status field is present ...
+                logger.debug("backend status: %s", resp['_status'])
+
+            if '_issues' in resp:
+                for issue in resp['_issues']:
+                    logger.error(" - issue: %s: %s", issue, resp['_issues'][issue])
+                raise BackendException(response.status_code, response.content, resp)
+
+            if '_error' in resp:  # pragma: no cover - need specific backend tests
+                # Considering a problem occured if an _error field is present ...
+                error = resp['_error']
+                logger.error("backend error: %s, %s", error['code'], error['message'])
+                raise BackendException(error['code'], error['message'], resp)
+
+            return response.json()
+
     def delete(self, endpoint, headers):
         """
         Method to delete an item or all items
