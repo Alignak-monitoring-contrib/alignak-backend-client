@@ -209,6 +209,9 @@ The following chapters give some command line examples. Do not hesitate to run `
 
 To have more information about the script execution, use the `-v` / `--verbose` parameter to activate the verbose mode. To test a command before executing operations in the backend, you can use the dry-run mode (`-c` / `--check`).
 
+**Note**: the provided examples may not be up-to-date because of some recent Alignak backend data model modifications.
+
+
 
 Add elements
 ------------
