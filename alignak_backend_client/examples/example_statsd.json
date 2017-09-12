@@ -1,0 +1,7 @@
+{
+    "name": "statsd_demo",
+    "address": "192.168.0.17",
+    "port": 8125,
+    "prefix": "alignak-statsd",
+    "_sub_realm": true
+}

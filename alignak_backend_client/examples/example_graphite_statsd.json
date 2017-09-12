@@ -1,0 +1,11 @@
+{
+    "name": "graphite_demo",
+    "carbon_address": "192.168.0.17",
+    "carbon_port": 2004,
+    "graphite_address": "192.168.0.17",
+    "graphite_port": 8080,
+    "prefix": "alignak-demo",
+    "grafana": "grafana_demo",
+    "statsd": "statsd_demo",
+    "_sub_realm": true
+}

@@ -11,8 +11,7 @@ import shlex
 import subprocess
 import requests
 import unittest2
-from nose import with_setup  # optional
-from nose.tools import assert_true, assert_false, assert_equal, assert_raises
+from nose.tools import assert_true, assert_equal, assert_raises
 from alignak_backend_client.client import Backend, BackendException
 
 
@@ -28,26 +27,26 @@ class TestGetClient(unittest2.TestCase):
         :param module:
         :return: None
         """
-        print("")
         print("start alignak backend")
 
         cls.backend_address = "http://localhost:5000"
 
-        # Set test mode for applications backend
-        os.environ['TEST_ALIGNAK_BACKEND'] = '1'
-        os.environ['TEST_ALIGNAK_BACKEND_DB'] = 'alignak-backend'
+        # Set DB name for tests
+        os.environ['ALIGNAK_BACKEND_MONGO_DBNAME'] = 'alignak-backend-test'
 
         # Delete used mongo DBs
         exit_code = subprocess.call(
             shlex.split(
-                'mongo %s --eval "db.dropDatabase()"' % os.environ['TEST_ALIGNAK_BACKEND_DB'])
+                'mongo %s --eval "db.dropDatabase()"' % os.environ['ALIGNAK_BACKEND_MONGO_DBNAME'])
         )
         assert exit_code == 0
 
-        cls.pid = subprocess.Popen(
-            shlex.split('alignak_backend')
-        )
-        time.sleep(2)
+        cls.pid = subprocess.Popen([
+            'uwsgi', '--plugin', 'python', '-w', 'alignakbackend:app',
+            '--socket', '0.0.0.0:5000', '--protocol=http', '--enable-threads', '--pidfile',
+            '/tmp/uwsgi.pid'
+        ])
+        time.sleep(3)
 
         headers = {'Content-Type': 'application/json'}
         params = {'username': 'admin', 'password': 'admin', 'action': 'generate'}
@@ -70,6 +69,7 @@ class TestGetClient(unittest2.TestCase):
             params['name'] = 'group ' + str(num)
             response = requests.post(cls.backend_address + '/hostgroup', json=params,
                                      headers=headers, auth=cls.auth)
+            print(response.__dict__)
             assert_equal(response.status_code, 201)
 
     @classmethod
@@ -80,7 +80,6 @@ class TestGetClient(unittest2.TestCase):
         :param module:
         :return: None
         """
-        print("")
         print("stop alignak backend")
         cls.pid.kill()
 
@@ -112,7 +111,6 @@ class TestGetClient(unittest2.TestCase):
 
         :return: None
         """
-        print('')
         print('get all elements on an endpoint')
 
         # Create client API
@@ -123,8 +121,10 @@ class TestGetClient(unittest2.TestCase):
         print('get all hostgroups at once')
         params = {'max_results': 3}
         items = backend.get_all('hostgroup', params=params)
-        hosts = items['_items']
-        self.assertEqual(len(hosts), 101)
+        hostgroups = items['_items']
+        for hostgroup in hostgroups:
+            print("Group: %s" % hostgroup['name'])
+        self.assertEqual(len(hostgroups), 101)
 
     def test_3_page_after_page(self):
         """
@@ -132,14 +132,13 @@ class TestGetClient(unittest2.TestCase):
 
         :return: None
         """
-        print('')
         print('backend connection with username/password')
 
         # Create client API
         backend = Backend(self.backend_address)
         backend.login('admin', 'admin')
 
-        # Start with first page ...
+        # Start with first page ... max_results=3
         last_page = False
         parameters = {'max_results': 3, 'page': 1}
         items = []
@@ -165,7 +164,7 @@ class TestGetClient(unittest2.TestCase):
         print("Got %d elements:" % len(items))
         assert_equal(len(items), 101)
 
-        # Start with first page ...
+        # Start with first page ... max_results=10
         last_page = False
         parameters = {'max_results': 10, 'page': 1}
         items = []
@@ -187,6 +186,50 @@ class TestGetClient(unittest2.TestCase):
                 assert_equal(page_number, 11)
             items.extend(resp['_items'])
 
+        # Start with first page ... no max_results
+        last_page = False
+        parameters = {'page': 1}
+        items = []
+        while not last_page:
+            resp = backend.get('hostgroup', params=parameters)
+            assert_true('_items' in resp)
+            assert_true('_links' in resp)
+            assert_true('_meta' in resp)
+            page_number = int(resp['_meta']['page'])
+            total = int(resp['_meta']['total'])
+            max_results = int(resp['_meta']['max_results'])
+            assert_equal(total, 101)
+            assert_equal(max_results, 25)
+            if 'next' in resp['_links']:
+                # It has pagination, so get items of all pages
+                parameters['page'] = page_number + 1
+            else:
+                last_page = True
+                assert_equal(page_number, 5)
+            items.extend(resp['_items'])
+
         print("----------")
         print("Got %d elements:" % len(items))
         assert_equal(len(items), 101)
+
+    def test_4_connection_error(self):
+        """
+        Backend connection error when getting an object...
+
+        :return: None
+        """
+        print('test connection error when getting an object')
+
+        # Create client API
+        backend = Backend(self.backend_address)
+        backend.login('admin', 'admin')
+
+        print("stop the alignak backend")
+        self.pid.kill()
+
+        with assert_raises(BackendException) as cm:
+            print('get all hostgroups at once')
+            params = {'max_results': 3}
+            backend.get_all('hostgroup', params=params)
+        ex = cm.exception
+        self.assertEqual(ex.code, 1000)

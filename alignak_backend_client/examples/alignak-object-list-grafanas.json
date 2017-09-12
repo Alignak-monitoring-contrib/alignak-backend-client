@@ -1,0 +1,14 @@
+[
+    {
+        "_id": "588087d906fd4b22cd29b814",
+        "_realm": "587520a406fd4b4de523a1d2",
+        "_sub_realm": true,
+        "address": "192.168.0.17",
+        "apikey": "eyJrIjoiTjNOWHdIYTZIekN3QXVxenhpMzZCdDVqS3hudzkwOWkiLCJuIjoiYWxpZ25hay1iYWNrZW5kIiwiaWQiOjF9",
+        "name": "grafana_demo",
+        "port": 3000,
+        "refresh": "1m",
+        "ssl": false,
+        "timezone": "browser"
+    }
+]

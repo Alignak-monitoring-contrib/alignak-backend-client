@@ -1,0 +1,23 @@
+{
+    "acknowledged": false,
+    "acknowledgement_type": 1,
+    "downtimed": false,
+    "execution_time": 0.1673028469,
+    "host": "cogny",
+    "host_name": "cogny",
+    "last_check": 1484559772,
+    "last_state": "UNKNOWN",
+    "last_state_changed": 0,
+    "last_state_id": 0,
+    "last_state_type": "HARD",
+    "latency": 2.5263130665,
+    "long_output": "",
+    "output": "OK: test.monitor.run 4261747196 FreeBSD - up 64 days 3 hours 8 minutes",
+    "passive_check": false,
+    "perf_data": "type=3 uptime_minutes=92348 rta:120ms pl:0.123",
+    "service": null,
+    "state": "UP",
+    "state_changed": true,
+    "state_id": 0,
+    "state_type": "HARD"
+}

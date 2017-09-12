@@ -1,0 +1,15 @@
+[
+    {
+        "_id": "588087dc06fd4b22cd29b815",
+        "_realm": "587520a406fd4b4de523a1d2",
+        "_sub_realm": true,
+        "carbon_address": "192.168.0.17",
+        "carbon_port": 2004,
+        "grafana": "588087d906fd4b22cd29b814",
+        "graphite_address": "192.168.0.17",
+        "graphite_port": 8080,
+        "name": "graphite_demo",
+        "prefix": "alignak-demo",
+        "statsd": "5880842f06fd4b22cd29b813"
+    }
+]

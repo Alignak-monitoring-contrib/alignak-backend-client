@@ -1,0 +1,6 @@
+include version.py
+include README.rst
+include AUTHORS
+include LICENSE
+include requirements.txt
+recursive-include alignak_backend_client *

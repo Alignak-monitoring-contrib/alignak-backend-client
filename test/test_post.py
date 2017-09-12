@@ -11,8 +11,7 @@ import shlex
 import subprocess
 import requests
 import unittest2
-from nose import with_setup  # optional
-from nose.tools import assert_true, assert_false, assert_equal, assert_raises
+from nose.tools import assert_true, assert_raises
 from alignak_backend_client.client import Backend, BackendException
 
 
@@ -28,26 +27,26 @@ class TestPostClient(unittest2.TestCase):
         :param module:
         :return: None
         """
-        print("")
         print("start alignak backend")
 
         cls.backend_address = "http://localhost:5000"
 
-        # Set test mode for applications backend
-        os.environ['TEST_ALIGNAK_BACKEND'] = '1'
-        os.environ['TEST_ALIGNAK_BACKEND_DB'] = 'alignak-backend'
+        # Set DB name for tests
+        os.environ['ALIGNAK_BACKEND_MONGO_DBNAME'] = 'alignak-backend-test'
 
         # Delete used mongo DBs
         exit_code = subprocess.call(
             shlex.split(
-                'mongo %s --eval "db.dropDatabase()"' % os.environ['TEST_ALIGNAK_BACKEND_DB'])
+                'mongo %s --eval "db.dropDatabase()"' % os.environ['ALIGNAK_BACKEND_MONGO_DBNAME'])
         )
         assert exit_code == 0
 
-        cls.pid = subprocess.Popen(
-            shlex.split('alignak_backend')
-        )
-        time.sleep(2)
+        cls.pid = subprocess.Popen([
+            'uwsgi', '--plugin', 'python', '-w', 'alignakbackend:app',
+            '--socket', '0.0.0.0:5000', '--protocol=http', '--enable-threads', '--pidfile',
+            '/tmp/uwsgi.pid'
+        ])
+        time.sleep(3)
 
         headers = {'Content-Type': 'application/json'}
         params = {'username': 'admin', 'password': 'admin', 'action': 'generate'}
@@ -71,7 +70,6 @@ class TestPostClient(unittest2.TestCase):
         :param module:
         :return: None
         """
-        print("")
         print("stop alignak backend")
         cls.pid.kill()
 
@@ -130,3 +128,40 @@ class TestPostClient(unittest2.TestCase):
                 print("Issue: %s - %s" % (issue, ex.response["_issues"][issue]))
         assert_true(ex.code == 422)
         assert_true(ex.response["_issues"])
+
+    def test_3_post_connection_error(self):
+        """
+        Backend connection error when creating an object...
+
+        :return: None
+        """
+        print('test connection error when creating an object')
+
+        # Create client API
+        backend = Backend(self.backend_address)
+        backend.login('admin', 'admin')
+
+        print("stop the alignak backend")
+        self.pid.kill()
+
+        with assert_raises(BackendException) as cm:
+            # Create a new timeperiod
+            print('create a timeperiod')
+            data = {
+                "name": "Testing TP",
+                "alias": "Test TP",
+                "dateranges": [
+                    {u'monday': u'09:00-17:00'},
+                    {u'tuesday': u'09:00-17:00'},
+                    {u'wednesday': u'09:00-17:00'},
+                    {u'thursday': u'09:00-17:00'},
+                    {u'friday': u'09:00-17:00'}
+                ],
+                "_realm": self.realmAll_id
+            }
+            response = backend.post('timeperiod', data=data)
+            assert_true('_created' in response)
+            assert_true('_updated' in response)
+            assert_true(response['_created'] == response['_updated'])
+        ex = cm.exception
+        self.assertEqual(ex.code, 1000)

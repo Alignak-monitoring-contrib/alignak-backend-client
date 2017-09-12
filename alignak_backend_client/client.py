@@ -19,13 +19,24 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with AlignakBackend.  If not, see <http://www.gnu.org/licenses/>.
 """
-    Alignak backend client.
+    Alignak REST backend client library
+    ===================================
 
-    This module is a wrapper library to use the REST API of the Alignak backend
+    This module is a Python library used for connecting to an Alignak backend.
+
+    The `Backend` class implements the necessary methods to establish a connection
+    and interact with the backend REST API.
+
+    Backend interaction will necessarily start with a `login` and end with a `logout`. In
+    between, using the `get`, `post`, `patch` and `delete` functions will allow to manipulate
+    the backend elements.
+
+    The Alignak backend data model is `documented here <http://alignak-backend.readthedocs.io/>`_.
 """
 import json
 import traceback
-from logging import getLogger, DEBUG, WARNING
+import logging
+from logging import getLogger, WARNING
 
 import math
 import multiprocessing
@@ -34,10 +45,17 @@ from future.moves.urllib.parse import urljoin
 
 import requests
 from requests import Timeout, HTTPError
+from requests import ConnectionError as RequestsConnectionError
 from requests.auth import HTTPBasicAuth
 
-# Set logger level to WARNING, this to allow global application DEBUG logs without being spammed...
+
 logger = getLogger(__name__)
+# Check if logger has already handler to prevent override it
+if logger.handlers:
+    logger.addHandler(logger.handlers)
+else:
+    logging.basicConfig()
+# Set logger level to WARNING, this to allow global application DEBUG logs without being spammed...
 logger.setLevel(WARNING)
 
 # Disable default logs for requests and urllib3 libraries ...
@@ -50,9 +68,10 @@ BACKEND_PAGINATION_DEFAULT = 25
 
 
 class BackendException(Exception):
-    """
-    Specific backend exception class.
-    This exception provides an error code, an error message and the backend response.
+    """Specific backend exception class.
+    This specific exception is raised by the module when an error is encountered.
+
+    It provides an error code, an error message and the backend response.
 
     Defined error codes:
 
@@ -73,7 +92,7 @@ class BackendException(Exception):
 
     def __str__(self):
         """Exception to String"""
-        return "Backend error code %d: %s" % (self.code, self.message)
+        return "Backend error code %d: %s, response: %s" % (self.code, self.message, self.response)
 
 
 class Backend(object):
@@ -147,11 +166,14 @@ class Backend(object):
                 return False
             response.raise_for_status()
         except Timeout as e:  # pragma: no cover - need specific backend tests
-            logger.error("Backend connection timeout, error: %s", str(e))
+            logger.warning("Backend connection timeout, error: %s", str(e))
             raise BackendException(1002, "Backend connection timeout")
         except HTTPError as e:  # pragma: no cover - need specific backend tests
             logger.error("Backend HTTP error, error: %s", str(e))
             raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
+        except RequestsConnectionError as e:
+            logger.warning("Backend connection error, error: %s", str(e))
+            raise BackendException(1000, "Backend connection error")
         except Exception as e:  # pragma: no cover - security ...
             logger.error("Backend connection exception, error: %s / %s", type(e), str(e))
             raise BackendException(1000, "Backend is not available")
@@ -210,11 +232,14 @@ class Backend(object):
             )
             response.raise_for_status()
         except Timeout as e:  # pragma: no cover - need specific backend tests
-            logger.error("Backend connection timeout, error: %s", str(e))
+            logger.warning("Backend connection timeout, error: %s", str(e))
             raise BackendException(1002, "Backend connection timeout")
         except HTTPError as e:  # pragma: no cover - need specific backend tests
             logger.error("Backend HTTP error, error: %s", str(e))
             raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
+        except RequestsConnectionError as e:  # pragma: no cover - need specific backend tests
+            logger.warning("Backend connection error, error: %s", str(e))
+            raise BackendException(1000, "Backend connection error")
         except Exception as e:  # pragma: no cover - security ...
             logger.error("Backend connection exception, error: %s / %s", type(e), str(e))
             raise BackendException(1000, "Backend exception: %s / %s" % (type(e), str(e)))
@@ -228,7 +253,7 @@ class Backend(object):
         """
         Connect to alignak backend and retrieve all available child endpoints of root
 
-        If connection is successfull, returns a list of all the resources available in the backend:
+        If connection is successful, returns a list of all the resources available in the backend:
         Each resource is identified with its title and provides its endpoint relative to backend
         root endpoint.::
 
@@ -265,7 +290,7 @@ class Backend(object):
         """
         Get items or item in alignak backend
 
-        If an error occurs, a BackendException is raised.
+        If an error occurs, a BackendExcehi spea1ption is raised.
 
         This method builds a response that always contains: _items and _status::
 
@@ -278,8 +303,8 @@ class Backend(object):
 
         :param endpoint: endpoint (API URL) relative from root endpoint
         :type endpoint: str
-        :param params: list of parameters for the backend API
-        :type params: list
+        :param params: parameters for the backend API
+        :type params: dict
         :return: list of properties when query item | list of items when get many items
         :rtype: list
         """
@@ -300,6 +325,13 @@ class Backend(object):
             )
             logger.debug("get, response: %s", response)
             response.raise_for_status()
+
+        except Timeout as e:  # pragma: no cover - need specific backend tests
+            logger.warning("Backend connection timeout, error: %s", str(e))
+            raise BackendException(1002, "Backend connection timeout")
+        except RequestsConnectionError as e:
+            logger.warning("Backend connection error, error: %s", str(e))
+            raise BackendException(1000, "Backend connection error")
         except HTTPError as e:  # pragma: no cover - need specific backend tests
             if e.response.status_code == 404:
                 raise BackendException(404, 'Not found')
@@ -408,7 +440,7 @@ class Backend(object):
             # Get first page
             resp = self.get(endpoint, params)
             number_pages = int(math.ceil(
-                int(resp['_meta']['total']) / int(resp['_meta']['max_results'])))
+                float(resp['_meta']['total']) / float(resp['_meta']['max_results'])))
 
             out_q = multiprocessing.Queue()
             chunksize = int(math.ceil(number_pages / float(self.processes)))
@@ -485,14 +517,19 @@ class Backend(object):
                 )
                 resp = json.loads(response.content)
             logger.debug("post, response: %s", resp)
-        except ValueError as e:  # pragma: no cover - should never happen now...
-            logger.error("Exception, error: %s", str(e))
-            logger.error("traceback: %s", traceback.format_exc())
-            raise BackendException(1003, "Exception: %s" % (str(e)))
-
+        # except ValueError as e:  # pragma: no cover - should never happen now...
+        #     logger.error("Exception, error: %s", str(e))
+        #     logger.error("traceback: %s", traceback.format_exc())
+        #     raise BackendException(1003, "Exception: %s" % (str(e)))
+        #
+        except Timeout as e:  # pragma: no cover - need specific backend tests
+            logger.warning("Backend connection timeout, error: %s", str(e))
+            raise BackendException(1002, "Backend connection timeout")
+        except RequestsConnectionError as e:
+            logger.warning("Backend connection error, error: %s", str(e))
+            raise BackendException(1000, "Backend connection error")
         except Exception as e:  # pragma: no cover - should never happen now...
-            logger.error("Exception, error: %s", str(e))
-            logger.error("traceback: %s", traceback.format_exc())
+            logger.exception("Exception, error: %s", e)
             # resp = response
             logger.error(
                 "Response is not JSON formatted: %d / %s", response.status_code, response.content
@@ -569,12 +606,26 @@ class Backend(object):
         logger.debug("patch, endpoint: %s", urljoin(self.url_endpoint_root, endpoint))
         logger.debug("patch, headers: %s", headers)
         logger.debug("patch, data: %s", data)
-        response = requests.patch(
-            urljoin(self.url_endpoint_root, endpoint),
-            json=data,
-            headers=headers,
-            auth=HTTPBasicAuth(self.token, '')
-        )
+        try:
+            response = requests.patch(
+                urljoin(self.url_endpoint_root, endpoint),
+                json=data,
+                headers=headers,
+                auth=HTTPBasicAuth(self.token, '')
+            )
+        except Timeout as e:  # pragma: no cover - need specific backend tests
+            logger.warning("Backend connection timeout, error: %s", str(e))
+            raise BackendException(1002, "Backend connection timeout")
+        except RequestsConnectionError as e:
+            logger.warning("Backend connection error, error: %s", str(e))
+            raise BackendException(1000, "Backend connection error")
+        except Exception as e:  # pragma: no cover - should never happen now...
+            logger.error("Exception, error: %s", str(e))
+            logger.error("traceback: %s", traceback.format_exc())
+            raise BackendException(
+                1003, "Exception error: %s" % (str(e)), response
+            )
+
         logger.debug("patch, response: %s", response)
         if response.status_code == 200:
             return response.json()
@@ -593,6 +644,117 @@ class Backend(object):
         else:  # pragma: no cover - should never occur
             logger.error(
                 "Patching failed, response is: %d / %s",
+                response.status_code, response.content
+            )
+            resp = response.json()
+            if '_status' in resp:
+                # Considering an information is returned if a _status field is present ...
+                logger.debug("backend status: %s", resp['_status'])
+
+            if '_issues' in resp:
+                for issue in resp['_issues']:
+                    logger.error(" - issue: %s: %s", issue, resp['_issues'][issue])
+                raise BackendException(response.status_code, response.content, resp)
+
+            if '_error' in resp:  # pragma: no cover - need specific backend tests
+                # Considering a problem occured if an _error field is present ...
+                error = resp['_error']
+                logger.error("backend error: %s, %s", error['code'], error['message'])
+                raise BackendException(error['code'], error['message'], resp)
+
+            return response.json()
+
+    def put(self, endpoint, data, headers=None, inception=False):
+        """
+        Method to replace an item
+
+        The headers must include an If-Match containing the object _etag.
+            headers = {'If-Match': contact_etag}
+
+        The data dictionary contain all fields.
+
+        If the puting fails because the _etag object do not match with the provided one, a
+        BackendException is raised with code = 412.
+
+        If inception is True, this method makes a new get request on the endpoint to refresh the
+        _etag and then a new put is called.
+
+        If an HTTP 412 error occurs, a BackendException is raised. This exception is:
+        - code: 412
+        - message: response content
+        - response: backend response
+
+        All other HTTP error raises a BackendException.
+        If some _issues are provided by the backend, this exception is:
+        - code: HTTP error code
+        - message: response content
+        - response: JSON encoded backend response (including '_issues' dictionary ...)
+
+        If no _issues are provided and an _error is signaled by the backend, this exception is:
+        - code: backend error code
+        - message: backend error message
+        - response: JSON encoded backend response
+
+        :param endpoint: endpoint (API URL)
+        :type endpoint: str
+        :param data: properties of item to update
+        :type data: dict
+        :param headers: headers (example: Content-Type). 'If-Match' required
+        :type headers: dict
+        :param inception: if True tries to get the last _etag
+        :type inception: bool
+        :return: dictionary containing put response from the backend
+        :rtype: dict
+        """
+        if not self.token:
+            logger.error("Authentication is required for put an object.")
+            raise BackendException(1001, "Access denied, please login before trying to put")
+
+        if not headers:
+            logger.error("Header If-Match is required for puting an object.")
+            raise BackendException(1005, "Header If-Match required for puting an object")
+
+        logger.debug("put, endpoint: %s", urljoin(self.url_endpoint_root, endpoint))
+        logger.debug("put, headers: %s", headers)
+        logger.debug("put, data: %s", data)
+        try:
+            response = requests.put(
+                urljoin(self.url_endpoint_root, endpoint),
+                json=data,
+                headers=headers,
+                auth=HTTPBasicAuth(self.token, '')
+            )
+        except Timeout as e:  # pragma: no cover - need specific backend tests
+            logger.warning("Backend connection timeout, error: %s", str(e))
+            raise BackendException(1002, "Backend connection timeout")
+        except RequestsConnectionError as e:
+            logger.warning("Backend connection error, error: %s", str(e))
+            raise BackendException(1000, "Backend connection error")
+        except Exception as e:  # pragma: no cover - should never happen now...
+            logger.error("Exception, error: %s", str(e))
+            logger.error("traceback: %s", traceback.format_exc())
+            raise BackendException(
+                1003, "Exception error: %s" % (str(e)), response
+            )
+
+        logger.debug("put, response: %s", response)
+        if response.status_code == 200:
+            return response.json()
+        elif response.status_code == 412:
+            # 412 means Precondition failed, but confirm ...
+            if inception:
+                # update etag and retry to put
+                resp = self.get(endpoint)
+                headers['If-Match'] = resp['_etag']
+                return self.put(
+                    endpoint,
+                    data=data, headers=headers, inception=False
+                )
+            else:
+                raise BackendException(412, response.content, response)
+        else:  # pragma: no cover - should never occur
+            logger.error(
+                "Puting failed, response is: %d / %s",
                 response.status_code, response.content
             )
             resp = response.json()
@@ -645,13 +807,14 @@ class Backend(object):
             response = {"_status": "OK"}
             return response
         except Timeout as e:  # pragma: no cover - need specific backend tests
-            logger.error("Backend connection timeout, error: %s", str(e))
+            logger.warning("Backend connection timeout, error: %s", str(e))
             raise BackendException(1002, "Backend connection timeout")
+        except RequestsConnectionError as e:
+            logger.warning("Backend connection error, error: %s", str(e))
+            raise BackendException(1000, "Backend connection error")
         except HTTPError as e:  # pragma: no cover - need specific backend tests
             logger.error("Backend HTTP error, error: %s", str(e))
             raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
         except Exception as e:  # pragma: no cover - security ...
             logger.error("Backend connection exception, error: %s / %s", type(e), str(e))
             raise BackendException(1000, "Backend exception: %s / %s" % (type(e), str(e)))
-
-        return {}
