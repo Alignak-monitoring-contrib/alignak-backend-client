@@ -38,4 +38,23 @@ after_success:
   # to get coverage data with relative paths and not absolute we have to
   # execute coveralls from the base directory of the project,
   # so we need to move the .coverage file here :
-  mv test/.coverage . && coveralls --rcfile=test/.coveragerc
+  - mv test/.coverage . && coveralls --rcfile=test/.coveragerc
+  - ./package.sh $TRAVIS_BRANCH $TRAVIS_PYTHON_VERSION
+
+deploy:
+  - provider: bintray
+    skip_cleanup: true
+    file: .bintray.json
+    user: ddurieux
+    key:
+      secure: "KogQ6XzwmnooPNXGYDFsTo1fz1hW3kbza32hOceZ1mKtL1/ohnWI6rmIgxCA0i/4UOFHUoicFePQnV3XvYTtKB8HposyJtkzEzDdaZONGBiLC77ZjqOQVbpuqqTNh6z3M/jwSWUUNOU0uTYm00lCkh97Wd8g+8WWxdZROmFA5G8ay04EziBtMRjOVqiCW48T6SguCs2RUO5wcjpk9oxux6IFHrteEZY4+41ajvRIIO9u0AO3JJvo/3SpAU0VKFnPO/5xc8GPanjPp7ujhaCJJJP1YN/Oh0FDJx4YSljZ09GdNBvF3ztKQLCNTXDAo13E5IzwLaCRaoTdt39RrtYNynJVyPfxNTq5nwg/sZlcsNRFrG27+AZU3IyEMcHmh9aD6y9GCGM9H3fhKsT22BNBXuDHM4uQRAZDe1s8rECvUjNG0I6UwT5NCo2nrWiizRZadhXqo7iirM0PctAylSD9zgH3Ffb9PSP/EF1qe8JpIhpJMqsY/MW37m9BQpTkCg8xfMQorWES/JHA3aiJlCeHHLCtlLqiIGcxaOqHYdWswa4Qrl6L0pfFTJ9/P9R577s5DV5vqtaVl91mRbtyp/czxIsu6NHCl/S7w2FGFFZxTAg5uC9oeLs7luhFg7ufMSFrD74CIB/uN2ANJZRMLcoc4omJZ5J8WkteSjBmf6755Uk="
+    on:
+      branch: develop
+  - provider: bintray
+    skip_cleanup: true
+    file: .bintray.release.json
+    user: ddurieux
+    key:
+      secure: "KogQ6XzwmnooPNXGYDFsTo1fz1hW3kbza32hOceZ1mKtL1/ohnWI6rmIgxCA0i/4UOFHUoicFePQnV3XvYTtKB8HposyJtkzEzDdaZONGBiLC77ZjqOQVbpuqqTNh6z3M/jwSWUUNOU0uTYm00lCkh97Wd8g+8WWxdZROmFA5G8ay04EziBtMRjOVqiCW48T6SguCs2RUO5wcjpk9oxux6IFHrteEZY4+41ajvRIIO9u0AO3JJvo/3SpAU0VKFnPO/5xc8GPanjPp7ujhaCJJJP1YN/Oh0FDJx4YSljZ09GdNBvF3ztKQLCNTXDAo13E5IzwLaCRaoTdt39RrtYNynJVyPfxNTq5nwg/sZlcsNRFrG27+AZU3IyEMcHmh9aD6y9GCGM9H3fhKsT22BNBXuDHM4uQRAZDe1s8rECvUjNG0I6UwT5NCo2nrWiizRZadhXqo7iirM0PctAylSD9zgH3Ffb9PSP/EF1qe8JpIhpJMqsY/MW37m9BQpTkCg8xfMQorWES/JHA3aiJlCeHHLCtlLqiIGcxaOqHYdWswa4Qrl6L0pfFTJ9/P9R577s5DV5vqtaVl91mRbtyp/czxIsu6NHCl/S7w2FGFFZxTAg5uC9oeLs7luhFg7ufMSFrD74CIB/uN2ANJZRMLcoc4omJZ5J8WkteSjBmf6755Uk="
+    on:
+      tags: true
