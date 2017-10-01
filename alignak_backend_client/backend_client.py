@@ -209,7 +209,7 @@ logger = logging.getLogger('alignak_backend_client.client')
 logger.setLevel('INFO')
 
 # Use the same version as the main alignak backend
-__version__ = "0.9.3"
+__version__ = "1.0.0"
 
 
 class BackendUpdate(object):
@@ -820,12 +820,36 @@ class BackendUpdate(object):
                 if 'name' in json_item:
                     item_name = json_item['name']
 
+                # Got the item name
+                params = {'name': item_name}
+
+                if resource_name == 'service' and 'host' in json_item:
+                    # Get host from name
+                    host_search = {'name': json_item['host']}
+                    if '_is_template' in json_item:
+                        host_search.update({'_is_template': json_item['_is_template']})
+                    logger.info("Host search: %s", host_search)
+                    resp_host = self.backend.get(
+                        'host', params={'where': json.dumps(host_search)})
+                    if resp_host['_items']:
+                        host = resp_host['_items'][0]
+                        logger.info("Got host '%s' for the service '%s'", host['name'], item_name)
+                    else:
+                        logger.warning("Host not found: '%s' for the service: %s!",
+                                       json_item['host'], item_name)
+                        continue
+
+                    params = {'name': item_name, 'host': host['_id']}
+
                 if resource_name == 'service' and '/' in item_name:
                     splitted_name = item_name.split('/')
 
                     # Get host from name
+                    host_search = {'name': splitted_name[0]}
+                    if '_is_template' in json_item:
+                        host_search.update({'_is_template': json_item['_is_template']})
                     resp_host = self.backend.get(
-                        'host', params={'where': json.dumps({'name': splitted_name[0]})})
+                        'host', params={'where': json.dumps(host_search)})
                     if resp_host['_items']:
                         host = resp_host['_items'][0]
                         logger.info("Got host '%s' for the service '%s'",
@@ -836,11 +860,14 @@ class BackendUpdate(object):
                         continue
 
                     item_name = splitted_name[1]
-                    params = {'where': json.dumps({'name': item_name, 'host': host['_id']})}
-                # Got the item name
-                params = {'where': json.dumps({'name': item_name})}
+                    params = {'name': item_name, 'host': host['_id']}
 
-                logger.info("Trying to get %s: '%s'", resource_name, item_name)
+                if '_is_template' in json_item:
+                    params.update({'_is_template': json_item['_is_template']})
+
+                params = {'where': json.dumps(params)}
+
+                logger.info("Trying to get %s: '%s', params: %s", resource_name, item_name, params)
                 response = self.backend.get(resource_name, params=params)
                 if response['_items']:
                     found_item = response['_items'][0]
@@ -1031,7 +1058,7 @@ def main():
     """
     bc = BackendUpdate()
     bc.initialize()
-    logger.debug("backend_client, version: %s", __version__)
+    logger.info("backend_client, version: %s", __version__)
     logger.debug("~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
     success = False
