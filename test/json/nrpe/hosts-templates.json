@@ -1,0 +1,71 @@
+[
+    {
+        "_is_template": true,
+        "_realm": "All",
+        "_sub_realm": true,
+        "_templates_with_services": true,
+        "active_checks_enabled": true,
+        "alias": "",
+        "check_command": "check_nrpe_alive",
+        "check_command_args": "",
+        "check_period": "24x7",
+        "customs": {
+            "_NRPE_TIMEOUT": 10,
+            "_NRPE_SSL": "-n"
+        },
+        "imported_from": "alignak-checks-nrpe",
+        "initial_state": "x",
+        "name": "freebsd-nrpe",
+        "notes": "",
+        "notes_url": "",
+        "tags": [
+            "nrpe-host", "freebsd"
+        ]
+    },
+    {
+        "_is_template": true,
+        "_realm": "All",
+        "_sub_realm": true,
+        "_templates_with_services": true,
+        "active_checks_enabled": true,
+        "alias": "",
+        "check_command": "check_nrpe_alive",
+        "check_command_args": "",
+        "check_period": "24x7",
+        "customs": {
+            "_NRPE_TIMEOUT": 10,
+            "_NRPE_SSL": "-n"
+        },
+        "imported_from": "alignak-checks-nrpe",
+        "initial_state": "x",
+        "name": "linux-nrpe",
+        "notes": "",
+        "notes_url": "",
+        "tags": [
+            "nrpe-host", "linux"
+        ]
+    },
+    {
+        "_is_template": true,
+        "_realm": "All",
+        "_sub_realm": true,
+        "_templates_with_services": true,
+        "active_checks_enabled": true,
+        "alias": "",
+        "check_command": "check_nrpe_alive",
+        "check_command_args": "",
+        "check_period": "24x7",
+        "customs": {
+            "_NRPE_TIMEOUT": 10,
+            "_NRPE_SSL": "-n"
+        },
+        "imported_from": "alignak-checks-nrpe",
+        "initial_state": "x",
+        "name": "windows-nrpe",
+        "notes": "",
+        "notes_url": "",
+        "tags": [
+            "nrpe-host", "windows"
+        ]
+    }
+]
