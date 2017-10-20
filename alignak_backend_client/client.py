@@ -290,9 +290,9 @@ class Backend(object):
         """
         Get items or item in alignak backend
 
-        If an error occurs, a BackendExcehi spea1ption is raised.
+        If an error occurs, a BackendException is raised.
 
-        This method builds a response that always contains: _items and _status::
+        This method builds a response as a dictionary that always contains: _items and _status::
 
             {
                 u'_items': [
@@ -305,8 +305,8 @@ class Backend(object):
         :type endpoint: str
         :param params: parameters for the backend API
         :type params: dict
-        :return: list of properties when query item | list of items when get many items
-        :rtype: list
+        :return: dictionary as specified upper
+        :rtype: dict
         """
         if not self.token:
             logger.error("Authentication is required for getting an object.")
