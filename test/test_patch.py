@@ -144,12 +144,7 @@ class TestPatchClient(unittest2.TestCase):
             headers = {'If-Match': user_etag}
             backend.patch('/'.join(['user', user_id]), data=data, headers=headers, inception=True)
         ex = cm.exception
-        print('exception:', str(ex.code), ex.message, ex.response)
-        if "_issues" in ex.response:
-            for issue in ex.response["_issues"]:
-                print("Issue: %s - %s" % (issue, ex.response["_issues"][issue]))
         assert_true(ex.code == 422)
-        assert_true(ex.response["_issues"])
 
         with assert_raises(BackendException) as cm:
             data = {'alias': 'modified test again and again'}

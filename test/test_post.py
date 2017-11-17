@@ -122,12 +122,7 @@ class TestPostClient(unittest2.TestCase):
         with assert_raises(BackendException) as cm:
             backend.post('user', data=data)
         ex = cm.exception
-        print('exception:', str(ex.code), ex.message, ex.response)
-        if "_issues" in ex.response:
-            for issue in ex.response["_issues"]:
-                print("Issue: %s - %s" % (issue, ex.response["_issues"][issue]))
         assert_true(ex.code == 422)
-        assert_true(ex.response["_issues"])
 
     def test_3_post_connection_error(self):
         """

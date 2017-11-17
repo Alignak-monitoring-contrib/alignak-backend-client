@@ -33,8 +33,6 @@
 
     The Alignak backend data model is `documented here <http://alignak-backend.readthedocs.io/>`_.
 """
-import json
-import traceback
 import logging
 from logging import getLogger, WARNING
 
@@ -44,10 +42,11 @@ import multiprocessing
 from future.moves.urllib.parse import urljoin
 
 import requests
-from requests import Timeout, HTTPError
-from requests import ConnectionError as RequestsConnectionError
+from requests import RequestException
 from requests.auth import HTTPBasicAuth
-
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3 import Retry
+# from urllib3.util import Retry
 
 logger = getLogger(__name__)
 # Check if logger has already handler to prevent override it
@@ -56,7 +55,7 @@ if logger.handlers:
 else:
     logging.basicConfig()
 # Set logger level to WARNING, this to allow global application DEBUG logs without being spammed...
-logger.setLevel(WARNING)
+logger.setLevel('DEBUG')
 
 # Disable default logs for requests and urllib3 libraries ...
 getLogger("requests").setLevel(WARNING)
@@ -65,6 +64,9 @@ getLogger("urllib3").setLevel(WARNING)
 # Define pagination limits according to backend's ones!
 BACKEND_PAGINATION_LIMIT = 50
 BACKEND_PAGINATION_DEFAULT = 25
+
+# Connection error code
+BACKEND_ERROR = 1000
 
 
 class BackendException(Exception):
@@ -75,24 +77,22 @@ class BackendException(Exception):
 
     Defined error codes:
 
-    - 1000: general exception, message contains more information
-    - 1001: backend access denied
-    - 1002: backend connection timeout
-    - 1003: backend uncatched HTTPError
-    - 1004: backend token not provided on login, user is not yet authorized to log in
-    - 1005: If-Match header is required for patching an object
+    - 1000: first stage error, exception raising between the client and the backend when connecting
+    - <1000: second stage error. Connection between client and backend is ok, but the backend returns errors on
+    requests
     """
+    # TODO: create a special Exception for managing problems in the session, and another inside the response decoding
     def __init__(self, code, message, response=None):
         # Call the base class constructor with the parameters it needs
         super(BackendException, self).__init__(message)
-
         self.code = code
         self.message = message
         self.response = response
+        logger.error(self.__str__())
 
     def __str__(self):
         """Exception to String"""
-        return "Backend error code %d: %s, response: %s" % (self.code, self.message, self.response)
+        return "BackendException raised with code {0} and message: {1}".format(self.code, self.message)
 
 
 class Backend(object):
@@ -109,14 +109,116 @@ class Backend(object):
         :param endpoint: root endpoint (API URL)
         :type endpoint: str
         """
-        self.connected = False
-        self.authenticated = False
         self.processes = processes
         if endpoint.endswith('/'):  # pragma: no cover - test url is complying ...
             self.url_endpoint_root = endpoint[0:-1]
         else:
             self.url_endpoint_root = endpoint
+
+        self.session = requests.Session()
+        self.session.header = {'Content-Type': 'application/json'}
+
+        # Needed for retrying requests (104 - Connection reset by peer for example)
+        methods = ['POST', 'HEAD', 'GET', 'PUT', 'DELETE', 'PATCH']
+        http_retry = Retry(total=5, connect=5, read=5, backoff_factor=0.1, method_whitelist=methods)
+        https_retry = Retry(total=5, connect=5, read=5, backoff_factor=0.1, method_whitelist=methods)
+        http_adapter = HTTPAdapter(max_retries=http_retry)
+        https_adapter = HTTPAdapter(max_retries=https_retry)
+        self.session.mount('http://', http_adapter)
+        self.session.mount('https://', https_adapter)
+
+        self.authenticated = False
         self.token = None
+
+        self.timeout = None  # TODO: Add this option in config file
+
+    def get_url(self, endpoint):
+        """
+        Returns the formated full URL endpoint
+        :param endpoint: str. the relative endpoint to access
+        :return: str
+        """
+        return urljoin(self.url_endpoint_root, endpoint)
+
+    def get_response(self, method, endpoint, headers=None, json=None, params=None, data=None):
+        """
+        Returns the response from the requested endpoint with the requested method
+        :param method: str. one of the methods accepted by Requests ('POST', 'GET', ...)
+        :param endpoint: str. the relative endpoint to access
+        :param params: (optional) Dictionary or bytes to be sent in the query string for the :class:`Request`.
+        :param data: (optional) Dictionary, bytes, or file-like object to send in the body of the :class:`Request`.
+        :param json: (optional) json to send in the body of the :class:`Request`.
+        :param headers: (optional) Dictionary of HTTP Headers to send with the :class:`Request`.
+        :return: Requests.response
+        """
+        logger.debug("Parameters for get_response:")
+        logger.debug("\t - endpoint: {0}".format(endpoint))
+        logger.debug("\t - method: {0}".format(method))
+        logger.debug("\t - headers: {0}".format(headers))
+        logger.debug("\t - json: {0}".format(json))
+        logger.debug("\t - params: {0}".format(params))
+        logger.debug("\t - data: {0}".format(data))
+
+        url = self.get_url(endpoint)
+
+        # First stage. Errors are connection errors (timeout, no session, ...)
+        try:
+            response = self.session.request(method=method, url=url, headers=headers, json=json, params=params,
+                                            data=data, timeout=self.timeout)
+            logger.debug("response headers: {0}".format(response.headers))
+            logger.debug("response content: {0}".format(response.content))
+        except RequestException as e:
+            response = {"_status": "ERR",
+                        "_error": {"message": e, "code": BACKEND_ERROR},
+                        "_issues": {"message": e, "code": BACKEND_ERROR}
+                        }
+            raise BackendException(code=BACKEND_ERROR,
+                                   message=e,
+                                   response=response)
+        else:
+            return response
+
+    @staticmethod
+    def decode(response):
+        """
+        Decodes and returns the response as JSON (dict) or raise BackendException
+        :param response: requests.response object
+        :return: dict
+        """
+
+        # Second stage. Errors are backend errors (bad login, bad url, ...)
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            raise BackendException(code=response.status_code,
+                                   message=e,
+                                   response=response)
+        else:
+            resp_json = response.json()
+            # Catch errors not sent in a HTTP error
+            error = resp_json.get('_error', None)
+            if error:
+                raise BackendException(code=error['code'],
+                                       message=error['message'],
+                                       response=response)
+            return resp_json
+
+    def set_token(self, token):
+        """
+        Set token in authentification for next requests
+        :param token: str. token to set in auth. If None, reinit auth
+        """
+        if token:
+            auth = HTTPBasicAuth(token, '')
+            self.token = token
+            self.authenticated = True  # TODO: Remove this parameter
+            self.session.auth = auth
+            logger.debug("Using session token: {0}".format(token))
+        else:
+            self.token = None
+            self.authenticated = False
+            self.session.auth = None
+            logger.debug("Session token/auth reinitialised")
 
     def login(self, username, password, generate='enabled'):
         """
@@ -142,75 +244,39 @@ class Backend(object):
         :return: return True if authentication is successfull, otherwise False
         :rtype: bool
         """
-        logger.debug("request backend authentication for: %s, generate: %s", username, generate)
+        logger.debug("login for: {0} with generate: {1}".format(username, generate))
 
         if not username or not password:
-            raise BackendException(1001, "Missing mandatory parameters")
+            raise BackendException(BACKEND_ERROR, "Missing mandatory parameters")
 
-        self.authenticated = False
-        self.token = None
+        endpoint = 'login'
+        json = {u'username': username, u'password': password}
+        if generate == 'force':
+            json['action'] = 'generate'
+            logger.debug("Asking for generating new token")
 
-        try:
-            headers = {'Content-Type': 'application/json'}
-            params = {u'username': username, u'password': password}
-            if generate == 'force':
-                params['action'] = 'generate'
+        response = self.get_response(method='POST', endpoint=endpoint, json=json)
+        if response.status_code == 401:
+            logger.error("Backend refused to login with params {0}".format(json))
+            self.set_token(token=None)
+            return False
 
-            response = requests.post(
-                urljoin(self.url_endpoint_root, 'login'),
-                json=params,
-                headers=headers
-            )
-            if response.status_code == 401:
-                logger.debug("authentication refused: %s", response.content)
-                return False
-            response.raise_for_status()
-        except Timeout as e:  # pragma: no cover - need specific backend tests
-            logger.warning("Backend connection timeout, error: %s", str(e))
-            raise BackendException(1002, "Backend connection timeout")
-        except HTTPError as e:  # pragma: no cover - need specific backend tests
-            logger.error("Backend HTTP error, error: %s", str(e))
-            raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
-        except RequestsConnectionError as e:
-            logger.warning("Backend connection error, error: %s", str(e))
-            raise BackendException(1000, "Backend connection error")
-        except Exception as e:  # pragma: no cover - security ...
-            logger.error("Backend connection exception, error: %s / %s", type(e), str(e))
-            raise BackendException(1000, "Backend is not available")
+        resp = self.decode(response=response)
 
-        resp = response.json()
-        logger.debug("authentication response: %s", resp)
+        if 'token' in resp:
+            self.set_token(token=resp['token'])
+            return True
+        elif generate == 'force':  # pragma: no cover - need specific backend tests
+            self.set_token(token=None)
+            raise BackendException(BACKEND_ERROR, "Token not provided")
+        elif generate == 'disabled':  # pragma: no cover - need specific backend tests
+            logger.error("Token disabled ... to be implemented!")
+            return False
+        elif generate == 'enabled':  # pragma: no cover - need specific backend tests
+            logger.warning("Token enabled, but none provided, require new token generation")
+            return self.login(username, password, 'force')
 
-        if '_status' in resp:  # pragma: no cover - need specific backend tests
-            # Considering an information is returned if a _status field is present ...
-            logger.debug("backend status: %s", resp['_status'])
-
-        if '_error' in resp:  # pragma: no cover - need specific backend tests
-            # Considering a problem occured is an _error field is present ...
-            error = resp['_error']
-            logger.error(
-                "authentication, error: %s, %s",
-                error['code'], error['message']
-            )
-            raise BackendException(error['code'], error['message'])
-
-        else:
-            if 'token' in resp:
-                self.token = resp['token']
-                self.authenticated = True
-                logger.debug("user authenticated: %s", username)
-                return True
-            elif generate == 'force':  # pragma: no cover - need specific backend tests
-                logger.error("Token generation required but none provided.")
-                raise BackendException(1004, "Token not provided")
-            elif generate == 'disabled':  # pragma: no cover - need specific backend tests
-                logger.error("Token disabled ... to be implemented!")
-                return False
-            elif generate == 'enabled':  # pragma: no cover - need specific backend tests
-                logger.warning("Token enabled, but none provided, require new token generation")
-                return self.login(username, password, 'force')
-
-            return False  # pragma: no cover - unreachable ...
+        return False  # pragma: no cover - unreachable ...
 
     def logout(self):
         """
@@ -219,33 +285,17 @@ class Backend(object):
         :return: return True if logout is successfull, otherwise False
         :rtype: bool
         """
-        if not self.token or not self.authenticated:
+        logger.debug("request backend logout")
+        if not self.authenticated:
             logger.warning("Unnecessary logout ...")
             return True
 
-        logger.debug("request backend logout")
+        endpoint = 'logout'
 
-        try:
-            response = requests.post(
-                urljoin(self.url_endpoint_root, 'logout'),
-                auth=HTTPBasicAuth(self.token, '')
-            )
-            response.raise_for_status()
-        except Timeout as e:  # pragma: no cover - need specific backend tests
-            logger.warning("Backend connection timeout, error: %s", str(e))
-            raise BackendException(1002, "Backend connection timeout")
-        except HTTPError as e:  # pragma: no cover - need specific backend tests
-            logger.error("Backend HTTP error, error: %s", str(e))
-            raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
-        except RequestsConnectionError as e:  # pragma: no cover - need specific backend tests
-            logger.warning("Backend connection error, error: %s", str(e))
-            raise BackendException(1000, "Backend connection error")
-        except Exception as e:  # pragma: no cover - security ...
-            logger.error("Backend connection exception, error: %s / %s", type(e), str(e))
-            raise BackendException(1000, "Backend exception: %s / %s" % (type(e), str(e)))
+        response = self.get_response(method='POST', endpoint=endpoint)
 
-        self.authenticated = False
-        self.token = None
+        self.session.close()
+        self.set_token(token=None)
 
         return True
 
@@ -271,14 +321,8 @@ class Backend(object):
         :return: list of available resources
         :rtype: list
         """
-        if not self.token:
-            logger.error("Authentication is required for getting an object.")
-            raise BackendException(1001, "Access denied, please login before trying to get")
-
-        logger.debug("trying to get domains from backend: %s", self.url_endpoint_root)
 
         resp = self.get('')
-        logger.debug("received domains data: %s", resp)
         if "_links" in resp:
             _links = resp["_links"]
             if "child" in _links:
@@ -308,51 +352,11 @@ class Backend(object):
         :return: dictionary as specified upper
         :rtype: dict
         """
-        if not self.token:
-            logger.error("Authentication is required for getting an object.")
-            raise BackendException(1001, "Access denied, please login before trying to get")
+        response = self.get_response(method='GET', endpoint=endpoint, params=params)
 
-        try:
-            logger.debug(
-                "get, endpoint: %s, parameters: %s",
-                urljoin(self.url_endpoint_root, endpoint),
-                params
-            )
-            response = requests.get(
-                urljoin(self.url_endpoint_root, endpoint),
-                params=params,
-                auth=HTTPBasicAuth(self.token, '')
-            )
-            logger.debug("get, response: %s", response)
-            response.raise_for_status()
-
-        except Timeout as e:  # pragma: no cover - need specific backend tests
-            logger.warning("Backend connection timeout, error: %s", str(e))
-            raise BackendException(1002, "Backend connection timeout")
-        except RequestsConnectionError as e:
-            logger.warning("Backend connection error, error: %s", str(e))
-            raise BackendException(1000, "Backend connection error")
-        except HTTPError as e:  # pragma: no cover - need specific backend tests
-            if e.response.status_code == 404:
-                raise BackendException(404, 'Not found')
-
-            logger.error("Backend HTTP error, error: %s", str(e))
-            raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
-        resp = response.json()
-        if '_status' in resp:  # pragma: no cover - need specific backend tests
-            # Considering an information is returned if a _status field is present ...
-            logger.debug("backend status: %s", resp['_status'])
-        else:
-            resp['_status'] = 'OK'
-
-        if '_error' in resp:  # pragma: no cover - need specific backend tests
-            # Considering a problem occured is an _error field is present ...
-            error = resp['_error']
-            error['message'] = "Url: %s. Message: %s" % (endpoint, error['message'])
-            logger.error("backend error: %s, %s", error['code'], error['message'])
-            raise BackendException(error['code'], error['message'])
-
-        # logger.debug("get, endpoint: %s, response: %s", endpoint, resp)
+        resp = self.decode(response=response)
+        if '_status' not in resp:  # pragma: no cover - need specific backend tests
+            resp['_status'] = 'OK'  # TODO: Sure??
 
         return resp
 
@@ -377,16 +381,10 @@ class Backend(object):
         :param endpoint: endpoint (API URL) relative from root endpoint
         :type endpoint: str
         :param params: list of parameters for the backend API
-        :type params: list
-        :return: list of properties when query item | list of items when get many items
-        :rtype: list
+        :type params: dict
+        :return: dict of properties
+        :rtype: dict
         """
-        if not self.token:
-            logger.error("Authentication is required for getting an object.")
-            raise BackendException(1001, "Access denied, please login before trying to get")
-
-        logger.debug("get_all, endpoint: %s, parameters: %s", endpoint, params)
-
         # Set max results at maximum value supported by the backend to limit requests number
         if not params:
             params = {'max_results': BACKEND_PAGINATION_LIMIT}
@@ -399,7 +397,7 @@ class Backend(object):
         if self.processes == 1:
             while not last_page:
                 # Get elements ...
-                resp = self.get(endpoint, params)
+                resp = self.get(endpoint=endpoint, params=params)
                 # Response contains:
                 # _items:
                 # ...
@@ -427,7 +425,7 @@ class Backend(object):
                 :param pages: range of pages to get
                 :type pages: list
                 :param out_q: Queue object
-                :type out_q: object
+                :type out_q: multiprocessing.Queue
                 :return: None
                 """
                 multi_items = []
@@ -479,77 +477,38 @@ class Backend(object):
         :type endpoint: str
         :param data: properties of item to create
         :type data: dict
+        :param files: Not used. To be implemented
+        :type files: None
         :param headers: headers (example: Content-Type)
         :type headers: dict
         :return: response (creation information)
         :rtype: dict
         """
-        if not self.token:
-            logger.error("Authentication is required for adding an object.")
-            raise BackendException(1001, "Access denied, please login before trying to post")
+        # We let Requests to encode data to json
+        response = self.get_response(method='POST', endpoint=endpoint, json=data, headers=headers)
 
-        if not headers:
-            headers = {'Content-Type': 'application/json'}
-            if isinstance(data, dict):
-                data = json.dumps(data)
+        resp = self.decode(response=response)
 
-        logger.debug("post, endpoint: %s", urljoin(self.url_endpoint_root, endpoint))
-        logger.debug("post, headers: %s", headers)
-        logger.debug("post, data: %s = %s", type(data), data)
-        logger.debug("post, files: %s", files)
-        try:
-            if not files:
-                response = requests.post(
-                    urljoin(self.url_endpoint_root, endpoint),
-                    data=data,
-                    files=files,
-                    headers=headers,
-                    auth=HTTPBasicAuth(self.token, '')
-                )
-                resp = response.json()
-            else:
-                # Posting files is not yet used, but reserved for future use...
-                response = requests.post(
-                    urljoin(self.url_endpoint_root, endpoint),
-                    data=data,
-                    files=files,
-                    auth=HTTPBasicAuth(self.token, '')
-                )
-                resp = json.loads(response.content)
-            logger.debug("post, response: %s", resp)
-        # except ValueError as e:  # pragma: no cover - should never happen now...
-        #     logger.error("Exception, error: %s", str(e))
-        #     logger.error("traceback: %s", traceback.format_exc())
-        #     raise BackendException(1003, "Exception: %s" % (str(e)))
-        #
-        except Timeout as e:  # pragma: no cover - need specific backend tests
-            logger.warning("Backend connection timeout, error: %s", str(e))
-            raise BackendException(1002, "Backend connection timeout")
-        except RequestsConnectionError as e:
-            logger.warning("Backend connection error, error: %s", str(e))
-            raise BackendException(1000, "Backend connection error")
-        except Exception as e:  # pragma: no cover - should never happen now...
-            logger.exception("Exception, error: %s", e)
-            # resp = response
-            logger.error(
-                "Response is not JSON formatted: %d / %s", response.status_code, response.content
-            )
-            raise BackendException(
-                1003, "Response is not JSON formatted: %s" % (response.content), response
-            )
-
-        if '_status' in resp:
-            # Considering an information is returned if a _status field is present ...
-            logger.debug("backend status: %s", resp['_status'])
-
-        if '_error' in resp:  # pragma: no cover - need specific backend tests
-            # Considering a problem occured is an _error field is present ...
-            error = resp['_error']
-            logger.error("backend error: %s, %s", error['code'], error['message'])
-            if '_issues' in resp:
-                for issue in resp['_issues']:
-                    logger.error(" - issue: %s: %s", issue, resp['_issues'][issue])
-            raise BackendException(error['code'], error['message'], resp)
+        # TODO: Add files support (cf. Requests - post-a-multipart-encoded-file)
+        # try:
+        #     if not files:
+        #         response = requests.post(
+        #             urljoin(self.url_endpoint_root, endpoint),
+        #             data=data,
+        #             files=files,
+        #             headers=headers,
+        #             auth=HTTPBasicAuth(self.token, '')
+        #         )
+        #         resp = response.json()
+        #     else:
+        #         # Posting files is not yet used, but reserved for future use...
+        #         response = requests.post(
+        #             urljoin(self.url_endpoint_root, endpoint),
+        #             data=data,
+        #             files=files,
+        #             auth=HTTPBasicAuth(self.token, '')
+        #         )
+        #         resp = json.loads(response.content)
 
         return resp
 
@@ -595,74 +554,24 @@ class Backend(object):
         :return: dictionary containing patch response from the backend
         :rtype: dict
         """
-        if not self.token:
-            logger.error("Authentication is required for patching an object.")
-            raise BackendException(1001, "Access denied, please login before trying to patch")
-
         if not headers:
-            logger.error("Header If-Match is required for patching an object.")
-            raise BackendException(1005, "Header If-Match required for patching an object")
+            raise BackendException(BACKEND_ERROR, "Header If-Match required for patching an object")
 
-        logger.debug("patch, endpoint: %s", urljoin(self.url_endpoint_root, endpoint))
-        logger.debug("patch, headers: %s", headers)
-        logger.debug("patch, data: %s", data)
-        try:
-            response = requests.patch(
-                urljoin(self.url_endpoint_root, endpoint),
-                json=data,
-                headers=headers,
-                auth=HTTPBasicAuth(self.token, '')
-            )
-        except Timeout as e:  # pragma: no cover - need specific backend tests
-            logger.warning("Backend connection timeout, error: %s", str(e))
-            raise BackendException(1002, "Backend connection timeout")
-        except RequestsConnectionError as e:
-            logger.warning("Backend connection error, error: %s", str(e))
-            raise BackendException(1000, "Backend connection error")
-        except Exception as e:  # pragma: no cover - should never happen now...
-            logger.error("Exception, error: %s", str(e))
-            logger.error("traceback: %s", traceback.format_exc())
-            raise BackendException(
-                1003, "Exception error: %s" % (str(e)), response
-            )
+        response = self.get_response(method='PATCH', endpoint=endpoint, json=data, headers=headers)
 
-        logger.debug("patch, response: %s", response)
         if response.status_code == 200:
-            return response.json()
+            return self.decode(response=response)
         elif response.status_code == 412:
             # 412 means Precondition failed, but confirm ...
             if inception:
                 # update etag and retry to patch
                 resp = self.get(endpoint)
-                headers['If-Match'] = resp['_etag']
-                return self.patch(
-                    endpoint,
-                    data=data, headers=headers, inception=False
-                )
+                headers = {'If-Match': resp['_etag']}
+                return self.patch(endpoint, data=data, headers=headers, inception=False)
             else:
-                raise BackendException(412, response.content, response)
+                raise BackendException(response.status_code, response.content)
         else:  # pragma: no cover - should never occur
-            logger.error(
-                "Patching failed, response is: %d / %s",
-                response.status_code, response.content
-            )
-            resp = response.json()
-            if '_status' in resp:
-                # Considering an information is returned if a _status field is present ...
-                logger.debug("backend status: %s", resp['_status'])
-
-            if '_issues' in resp:
-                for issue in resp['_issues']:
-                    logger.error(" - issue: %s: %s", issue, resp['_issues'][issue])
-                raise BackendException(response.status_code, response.content, resp)
-
-            if '_error' in resp:  # pragma: no cover - need specific backend tests
-                # Considering a problem occured if an _error field is present ...
-                error = resp['_error']
-                logger.error("backend error: %s, %s", error['code'], error['message'])
-                raise BackendException(error['code'], error['message'], resp)
-
-            return response.json()
+            raise BackendException(response.status_code, response.content)
 
     def put(self, endpoint, data, headers=None, inception=False):
         """
@@ -706,74 +615,24 @@ class Backend(object):
         :return: dictionary containing put response from the backend
         :rtype: dict
         """
-        if not self.token:
-            logger.error("Authentication is required for put an object.")
-            raise BackendException(1001, "Access denied, please login before trying to put")
-
         if not headers:
-            logger.error("Header If-Match is required for puting an object.")
-            raise BackendException(1005, "Header If-Match required for puting an object")
+            raise BackendException(BackendException, "Header If-Match required for puting an object")
 
-        logger.debug("put, endpoint: %s", urljoin(self.url_endpoint_root, endpoint))
-        logger.debug("put, headers: %s", headers)
-        logger.debug("put, data: %s", data)
-        try:
-            response = requests.put(
-                urljoin(self.url_endpoint_root, endpoint),
-                json=data,
-                headers=headers,
-                auth=HTTPBasicAuth(self.token, '')
-            )
-        except Timeout as e:  # pragma: no cover - need specific backend tests
-            logger.warning("Backend connection timeout, error: %s", str(e))
-            raise BackendException(1002, "Backend connection timeout")
-        except RequestsConnectionError as e:
-            logger.warning("Backend connection error, error: %s", str(e))
-            raise BackendException(1000, "Backend connection error")
-        except Exception as e:  # pragma: no cover - should never happen now...
-            logger.error("Exception, error: %s", str(e))
-            logger.error("traceback: %s", traceback.format_exc())
-            raise BackendException(
-                1003, "Exception error: %s" % (str(e)), response
-            )
+        response = self.get_response(method='PUT', endpoint=endpoint, json=data, headers=headers)
 
-        logger.debug("put, response: %s", response)
         if response.status_code == 200:
-            return response.json()
+            return self.decode(response=response)
         elif response.status_code == 412:
             # 412 means Precondition failed, but confirm ...
             if inception:
-                # update etag and retry to put
+                # update etag and retry to patch
                 resp = self.get(endpoint)
-                headers['If-Match'] = resp['_etag']
-                return self.put(
-                    endpoint,
-                    data=data, headers=headers, inception=False
-                )
+                headers = {'If-Match': resp['_etag']}
+                return self.patch(endpoint, data=data, headers=headers, inception=False)
             else:
-                raise BackendException(412, response.content, response)
+                raise BackendException(response.status_code, response.content)
         else:  # pragma: no cover - should never occur
-            logger.error(
-                "Puting failed, response is: %d / %s",
-                response.status_code, response.content
-            )
-            resp = response.json()
-            if '_status' in resp:
-                # Considering an information is returned if a _status field is present ...
-                logger.debug("backend status: %s", resp['_status'])
-
-            if '_issues' in resp:
-                for issue in resp['_issues']:
-                    logger.error(" - issue: %s: %s", issue, resp['_issues'][issue])
-                raise BackendException(response.status_code, response.content, resp)
-
-            if '_error' in resp:  # pragma: no cover - need specific backend tests
-                # Considering a problem occured if an _error field is present ...
-                error = resp['_error']
-                logger.error("backend error: %s, %s", error['code'], error['message'])
-                raise BackendException(error['code'], error['message'], resp)
-
-            return response.json()
+            raise BackendException(response.status_code, response.content)
 
     def delete(self, endpoint, headers):
         """
@@ -788,33 +647,11 @@ class Backend(object):
         :return: response (deletion information)
         :rtype: dict
         """
-        if not self.token:
-            logger.error("Authentication is required for deleting an object.")
-            raise BackendException(1001, "Access denied, please login before trying to delete")
+        response = self.get_response(method='DELETE', endpoint=endpoint, headers=headers)
 
-        logger.debug("delete, endpoint: %s", urljoin(self.url_endpoint_root, endpoint))
-        logger.debug("delete, headers: %s", headers)
-        try:
-            response = requests.delete(
-                urljoin(self.url_endpoint_root, endpoint),
-                headers=headers,
-                auth=HTTPBasicAuth(self.token, '')
-            )
-            logger.debug("delete, response: %s", response)
-            if response.status_code != 204:  # pragma: no cover - should not happen ...
-                response.raise_for_status()
+        logger.debug("delete, response: %s", response)
+        if response.status_code != 204:  # pragma: no cover - should not happen ...
+            resp = self.decode(response=response)
 
-            response = {"_status": "OK"}
-            return response
-        except Timeout as e:  # pragma: no cover - need specific backend tests
-            logger.warning("Backend connection timeout, error: %s", str(e))
-            raise BackendException(1002, "Backend connection timeout")
-        except RequestsConnectionError as e:
-            logger.warning("Backend connection error, error: %s", str(e))
-            raise BackendException(1000, "Backend connection error")
-        except HTTPError as e:  # pragma: no cover - need specific backend tests
-            logger.error("Backend HTTP error, error: %s", str(e))
-            raise BackendException(1003, "Backend HTTPError: %s / %s" % (type(e), str(e)))
-        except Exception as e:  # pragma: no cover - security ...
-            logger.error("Backend connection exception, error: %s / %s", type(e), str(e))
-            raise BackendException(1000, "Backend exception: %s / %s" % (type(e), str(e)))
+        resp = {"_status": "OK"}
+        return resp
