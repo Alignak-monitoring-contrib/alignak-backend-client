@@ -811,7 +811,8 @@ class BackendUpdate(object):
             count = 0
             for json_item in json_data:
                 logger.info("-> json item: %s", json_item)
-                if name is None and ('name' not in json_item or not json_item['name']):
+                if resource_name not in ['history'] and name is None \
+                        and ('name' not in json_item or not json_item['name']):
                     logger.warning("-> unnamed '%s'!", resource_name)
                     continue
 
@@ -867,23 +868,25 @@ class BackendUpdate(object):
 
                 params = {'where': json.dumps(params)}
 
-                logger.info("Trying to get %s: '%s', params: %s", resource_name, item_name, params)
-                response = self.backend.get(resource_name, params=params)
-                if response['_items']:
-                    found_item = response['_items'][0]
-                    found_id = found_item['_id']
-                    found_etag = found_item['_etag']
-                    logger.info("-> found %s '%s': %s", resource_name, item_name, found_id)
+                if name:
+                    logger.info("Trying to get %s: '%s', params: %s",
+                                resource_name, item_name, params)
+                    response = self.backend.get(resource_name, params=params)
+                    if response['_items']:
+                        found_item = response['_items'][0]
+                        found_id = found_item['_id']
+                        found_etag = found_item['_etag']
+                        logger.info("-> found %s '%s': %s", resource_name, item_name, found_id)
 
-                    if not update:
-                        logger.warning("-> '%s' %s cannot be created because it already exists!",
-                                       resource_name, item_name)
-                        continue
-                else:
-                    if update:
-                        logger.warning("-> '%s' %s cannot be updated because it does not exist!",
-                                       resource_name, item_name)
-                        continue
+                        if not update:
+                            logger.warning("-> '%s' %s cannot be created because it already "
+                                           "exists!", resource_name, item_name)
+                            continue
+                    else:
+                        if update:
+                            logger.warning("-> '%s' %s cannot be updated because it does not "
+                                           "exist!", resource_name, item_name)
+                            continue
 
                 # Item data updated with provided information if some
 
@@ -1002,6 +1005,8 @@ class BackendUpdate(object):
 
                 if not update:
                     # Trying to create a new element
+                    if not item_data['name']:
+                        item_data.pop('name')
                     logger.info("-> trying to create the %s: %s.", resource_name, item_name)
                     logger.debug("-> with: %s.", item_data)
                     if not self.dry_run:
@@ -1009,6 +1014,10 @@ class BackendUpdate(object):
                     else:
                         response = {'_status': 'OK', '_id': '_fake', '_etag': '_fake'}
                 else:
+                    if not name:
+                        logger.warning("-> can not update '%s' with no name!", resource_name)
+                        continue
+
                     # Trying to update an element
                     logger.info("-> trying to update the %s: %s.", resource_name, item_name)
                     logger.debug("-> with: %s.", item_data)
