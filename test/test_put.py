@@ -162,7 +162,7 @@ class TestPutClient(unittest2.TestCase):
             backend.put('/'.join(['user', user_id]), data=data)
         ex = cm.exception
         print('exception:', str(ex.code))
-        assert_true(ex.code == 1005, str(ex))
+        assert_true(ex.code == 1000, str(ex))
 
         with assert_raises(BackendException) as cm:
             data = {'alias': 'modified test again and again'}
@@ -199,7 +199,7 @@ class TestPutClient(unittest2.TestCase):
             backend.put('/'.join(['alignakretention', ar_id]), data=data)
         ex = cm.exception
         print('exception:', str(ex.code))
-        assert_true(ex.code == 1005, str(ex))
+        assert_true(ex.code == 1000, str(ex))
 
         with assert_raises(BackendException) as cm:
             data = {

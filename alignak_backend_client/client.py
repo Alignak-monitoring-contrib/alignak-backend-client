@@ -34,7 +34,7 @@
     The Alignak backend data model is `documented here <http://alignak-backend.readthedocs.io/>`_.
 """
 import logging
-from logging import getLogger, WARNING
+from logging import getLogger
 
 import math
 import multiprocessing
@@ -55,11 +55,11 @@ if logger.handlers:
 else:
     logging.basicConfig()
 # Set logger level to WARNING, this to allow global application DEBUG logs without being spammed...
-logger.setLevel('DEBUG')
+logger.setLevel('WARNING')
 
 # Disable default logs for requests and urllib3 libraries ...
-getLogger("requests").setLevel(WARNING)
-getLogger("urllib3").setLevel(WARNING)
+getLogger("requests").setLevel('WARNING')
+getLogger("urllib3").setLevel('WARNING')
 
 # Define pagination limits according to backend's ones!
 BACKEND_PAGINATION_LIMIT = 50
@@ -128,7 +128,7 @@ class Backend(object):
         self.session.mount('https://', https_adapter)
 
         self.authenticated = False
-        self.token = None
+        self._token = None
 
         self.timeout = None  # TODO: Add this option in config file
 
@@ -210,15 +210,20 @@ class Backend(object):
         """
         if token:
             auth = HTTPBasicAuth(token, '')
-            self.token = token
+            self._token = token
             self.authenticated = True  # TODO: Remove this parameter
             self.session.auth = auth
             logger.debug("Using session token: {0}".format(token))
         else:
-            self.token = None
+            self._token = None
             self.authenticated = False
             self.session.auth = None
             logger.debug("Session token/auth reinitialised")
+
+    def get_token(self):
+        return self._token
+
+    token = property(get_token, set_token)
 
     def login(self, username, password, generate='enabled'):
         """
@@ -616,7 +621,7 @@ class Backend(object):
         :rtype: dict
         """
         if not headers:
-            raise BackendException(BackendException, "Header If-Match required for puting an object")
+            raise BackendException(BACKEND_ERROR, "Header If-Match required for puting an object")
 
         response = self.get_response(method='PUT', endpoint=endpoint, json=data, headers=headers)
 

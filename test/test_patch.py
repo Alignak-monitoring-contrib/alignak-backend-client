@@ -137,7 +137,7 @@ class TestPatchClient(unittest2.TestCase):
             backend.patch('/'.join(['user', user_id]), data=data)
         ex = cm.exception
         print('exception:', str(ex.code))
-        assert_true(ex.code == 1005, str(ex))
+        assert_true(ex.code == 1000, str(ex))
 
         with assert_raises(BackendException) as cm:
             data = {'bad_field': 'bad field name ... unknown in data model'}
