@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# pylint: disable=fixme
 
 #
 # Copyright (C) 2015-2016: AlignakBackend team, see AUTHORS.txt file for contributors
@@ -78,10 +79,12 @@ class BackendException(Exception):
     Defined error codes:
 
     - 1000: first stage error, exception raising between the client and the backend when connecting
-    - <1000: second stage error. Connection between client and backend is ok, but the backend returns errors on
+    - <1000: second stage error. Connection between client and backend is ok,
+    but the backend returns errors on
     requests
     """
-    # TODO: create a special Exception for managing problems in the session, and another inside the response decoding
+    # TODO: create a special Exception for managing problems in the session,
+    # and another inside the response decoding
     def __init__(self, code, message, response=None):
         # Call the base class constructor with the parameters it needs
         super(BackendException, self).__init__(message)
@@ -92,7 +95,8 @@ class BackendException(Exception):
 
     def __str__(self):
         """Exception to String"""
-        return "BackendException raised with code {0} and message: {1}".format(self.code, self.message)
+        return "BackendException raised with code {0} and message: {1}".format(self.code,
+                                                                               self.message)
 
 
 class Backend(object):
@@ -120,8 +124,10 @@ class Backend(object):
 
         # Needed for retrying requests (104 - Connection reset by peer for example)
         methods = ['POST', 'HEAD', 'GET', 'PUT', 'DELETE', 'PATCH']
-        http_retry = Retry(total=5, connect=5, read=5, backoff_factor=0.1, method_whitelist=methods)
-        https_retry = Retry(total=5, connect=5, read=5, backoff_factor=0.1, method_whitelist=methods)
+        http_retry = Retry(total=5, connect=5, read=5, backoff_factor=0.1,
+                           method_whitelist=methods)
+        https_retry = Retry(total=5, connect=5, read=5, backoff_factor=0.1,
+                            method_whitelist=methods)
         http_adapter = HTTPAdapter(max_retries=http_retry)
         https_adapter = HTTPAdapter(max_retries=https_retry)
         self.session.mount('http://', http_adapter)
@@ -141,37 +147,39 @@ class Backend(object):
         return urljoin(self.url_endpoint_root, endpoint)
 
     def get_response(self, method, endpoint, headers=None, json=None, params=None, data=None):
+        # pylint: disable=too-many-arguments
         """
         Returns the response from the requested endpoint with the requested method
         :param method: str. one of the methods accepted by Requests ('POST', 'GET', ...)
         :param endpoint: str. the relative endpoint to access
-        :param params: (optional) Dictionary or bytes to be sent in the query string for the :class:`Request`.
-        :param data: (optional) Dictionary, bytes, or file-like object to send in the body of the :class:`Request`.
+        :param params: (optional) Dictionary or bytes to be sent in the query string
+        for the :class:`Request`.
+        :param data: (optional) Dictionary, bytes, or file-like object to send in the body
+        of the :class:`Request`.
         :param json: (optional) json to send in the body of the :class:`Request`.
         :param headers: (optional) Dictionary of HTTP Headers to send with the :class:`Request`.
         :return: Requests.response
         """
         logger.debug("Parameters for get_response:")
-        logger.debug("\t - endpoint: {0}".format(endpoint))
-        logger.debug("\t - method: {0}".format(method))
-        logger.debug("\t - headers: {0}".format(headers))
-        logger.debug("\t - json: {0}".format(json))
-        logger.debug("\t - params: {0}".format(params))
-        logger.debug("\t - data: {0}".format(data))
+        logger.debug("\t - endpoint: %s", endpoint)
+        logger.debug("\t - method: %s", method)
+        logger.debug("\t - headers: %s", headers)
+        logger.debug("\t - json: %s", json)
+        logger.debug("\t - params: %s", params)
+        logger.debug("\t - data: %s", data)
 
         url = self.get_url(endpoint)
 
         # First stage. Errors are connection errors (timeout, no session, ...)
         try:
-            response = self.session.request(method=method, url=url, headers=headers, json=json, params=params,
-                                            data=data, timeout=self.timeout)
-            logger.debug("response headers: {0}".format(response.headers))
-            logger.debug("response content: {0}".format(response.content))
+            response = self.session.request(method=method, url=url, headers=headers, json=json,
+                                            params=params, data=data, timeout=self.timeout)
+            logger.debug("response headers: %s", response.headers)
+            logger.debug("response content: %s", response.content)
         except RequestException as e:
             response = {"_status": "ERR",
                         "_error": {"message": e, "code": BACKEND_ERROR},
-                        "_issues": {"message": e, "code": BACKEND_ERROR}
-                        }
+                        "_issues": {"message": e, "code": BACKEND_ERROR}}
             raise BackendException(code=BACKEND_ERROR,
                                    message=e,
                                    response=response)
@@ -213,7 +221,7 @@ class Backend(object):
             self._token = token
             self.authenticated = True  # TODO: Remove this parameter
             self.session.auth = auth
-            logger.debug("Using session token: {0}".format(token))
+            logger.debug("Using session token: %s", token)
         else:
             self._token = None
             self.authenticated = False
@@ -221,6 +229,7 @@ class Backend(object):
             logger.debug("Session token/auth reinitialised")
 
     def get_token(self):
+        """Get the stored backend token"""
         return self._token
 
     token = property(get_token, set_token)
@@ -249,7 +258,7 @@ class Backend(object):
         :return: return True if authentication is successfull, otherwise False
         :rtype: bool
         """
-        logger.debug("login for: {0} with generate: {1}".format(username, generate))
+        logger.debug("login for: %s with generate: %s", username, generate)
 
         if not username or not password:
             raise BackendException(BACKEND_ERROR, "Missing mandatory parameters")
@@ -262,7 +271,7 @@ class Backend(object):
 
         response = self.get_response(method='POST', endpoint=endpoint, json=json)
         if response.status_code == 401:
-            logger.error("Backend refused to login with params {0}".format(json))
+            logger.error("Backend refused login with params %s", json)
             self.set_token(token=None)
             return False
 
@@ -297,7 +306,7 @@ class Backend(object):
 
         endpoint = 'logout'
 
-        response = self.get_response(method='POST', endpoint=endpoint)
+        _ = self.get_response(method='POST', endpoint=endpoint)
 
         self.session.close()
         self.set_token(token=None)
@@ -475,6 +484,7 @@ class Backend(object):
         }
 
     def post(self, endpoint, data, files=None, headers=None):
+        # pylint: disable=unused-argument
         """
         Create a new item
 
@@ -489,7 +499,7 @@ class Backend(object):
         :return: response (creation information)
         :rtype: dict
         """
-        # We let Requests to encode data to json
+        # We let Requests encode data to json
         response = self.get_response(method='POST', endpoint=endpoint, json=data, headers=headers)
 
         resp = self.decode(response=response)
