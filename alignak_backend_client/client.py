@@ -46,8 +46,8 @@ import requests
 from requests import RequestException
 from requests.auth import HTTPBasicAuth
 from requests.adapters import HTTPAdapter
-from requests.packages.urllib3 import Retry
-# from urllib3.util import Retry
+# from requests.packages.urllib3 import Retry
+from urllib3.util import Retry
 
 logger = getLogger(__name__)
 # Check if logger has already handler to prevent override it
