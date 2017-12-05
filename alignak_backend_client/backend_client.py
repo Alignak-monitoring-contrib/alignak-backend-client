@@ -811,8 +811,8 @@ class BackendUpdate(object):
             count = 0
             for json_item in json_data:
                 logger.info("-> json item: %s", json_item)
-                if resource_name not in ['history'] and name is None \
-                        and ('name' not in json_item or not json_item['name']):
+                if resource_name not in ['history', 'userrestrictrole', 'logcheckresult'] \
+                        and name is None and ('name' not in json_item or not json_item['name']):
                     logger.warning("-> unnamed '%s'!", resource_name)
                     continue
 
