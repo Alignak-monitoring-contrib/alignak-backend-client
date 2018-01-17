@@ -238,6 +238,9 @@ class BackendUpdate(object):
             'host_notification_period': 1, 'host_notification_commands': 1,
             'service_notification_period': 1, 'service_notification_commands': 1
         },
+        'userrestrictrole': {
+            '_realm': 1, 'user': 1
+        },
         'host': {
             '_realm': 1, '_templates': 1,
             'check_command': 1, 'snapshot_command': 1, 'event_handler': 1,
