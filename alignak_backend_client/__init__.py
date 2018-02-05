@@ -9,7 +9,7 @@
 """
 
 # Application version and manifest
-VERSION = (1, 2, 0)
+VERSION = (1, 2, 1)
 
 __application__ = u"Alignak Backend client"
 __short_version__ = '.'.join((str(each) for each in VERSION[:2]))
