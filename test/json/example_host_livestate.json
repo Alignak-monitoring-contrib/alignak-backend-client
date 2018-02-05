@@ -16,7 +16,6 @@
     "ls_last_time_up": 0,
     "ls_latency": 0.0,
     "ls_long_output": "",
-    "ls_max_attempts": 0,
     "ls_next_check": 0,
     "ls_output": "OK: test.monitor.run 4261747196 FreeBSD - up 64 days 3 hours 8 minutes",
     "ls_passive_check": false,

@@ -95,8 +95,9 @@ class BackendException(Exception):
 
     def __str__(self):
         """Exception to String"""
-        return "BackendException raised with code {0} and message: {1}".format(self.code,
-                                                                               self.message)
+        return "BackendException raised with code {0} and message: {1} - {2}".format(self.code,
+                                                                                     self.message,
+                                                                                     self.response)
 
 
 class Backend(object):
@@ -375,6 +376,7 @@ class Backend(object):
         return resp
 
     def get_all(self, endpoint, params=None):
+        # pylint: disable=too-many-locals
         """
         Get all items in the specified endpoint of alignak backend
 

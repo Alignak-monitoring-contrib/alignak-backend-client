@@ -568,4 +568,3 @@ class TestAlignakBackendCli(unittest2.TestCase):
             'python ../alignak_backend_client/backend_client.py -f "%s" -t service list' % work_dir
         ))
         assert exit_code == 0
-
