@@ -691,6 +691,8 @@ class BackendUpdate(object):
                     logger.info("Dry-run mode: should have deleted all %s", resource_name)
             else:
                 params = {'where': json.dumps({'name': name})}
+                if resource_name in ['host', 'service', 'user']:
+                    params = {'where': json.dumps({'name': name, '_is_template': self.model})}
                 if resource_name == 'service' and '/' in name:
                     splitted_name = name.split('/')
                     name = splitted_name[0] + '_' + splitted_name[1]
