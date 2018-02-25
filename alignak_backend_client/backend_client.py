@@ -1015,7 +1015,12 @@ class BackendUpdate(object):
                     logger.info("-> trying to create the %s: %s.", resource_name, item_name)
                     logger.debug("-> with: %s.", item_data)
                     if not self.dry_run:
-                        response = self.backend.post(resource_name, item_data, headers=None)
+                        try:
+                            response = self.backend.post(resource_name, item_data, headers=None)
+                        except BackendException as exp:
+                            logger.exception("Exception: %s", exp)
+                            logger.error("Response: %s", exp.response)
+                            continue
                     else:
                         response = {'_status': 'OK', '_id': '_fake', '_etag': '_fake'}
                 else:
@@ -1027,9 +1032,15 @@ class BackendUpdate(object):
                     logger.info("-> trying to update the %s: %s.", resource_name, item_name)
                     logger.debug("-> with: %s.", item_data)
                     if not self.dry_run:
-                        headers = {'Content-Type': 'application/json', 'If-Match': found_etag}
-                        response = self.backend.patch(resource_name + '/' + found_id,
-                                                      item_data, headers=headers, inception=True)
+                        try:
+                            headers = {'Content-Type': 'application/json', 'If-Match': found_etag}
+                            response = self.backend.patch(resource_name + '/' + found_id,
+                                                          item_data, headers=headers,
+                                                          inception=True)
+                        except BackendException as exp:
+                            logger.exception("Exception: %s", exp)
+                            logger.error("Response: %s", exp.response)
+                            continue
                     else:
                         response = {'_status': 'OK', '_id': '_fake', '_etag': '_fake'}
 
