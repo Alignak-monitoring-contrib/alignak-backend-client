@@ -270,13 +270,14 @@ class Backend(object):
 
         if not username or not password:
             raise BackendException(BACKEND_ERROR, "Missing mandatory parameters")
+
         if proxies:
             for key in proxies.keys():
                 try:
                     assert key in PROXY_PROTOCOLS
                 except AssertionError:
                     raise BackendException(BACKEND_ERROR, "Wrong proxy protocol ", key)
-            self.proxies = proxies
+        self.proxies = proxies
 
         endpoint = 'login'
         json = {u'username': username, u'password': password}
