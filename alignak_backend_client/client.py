@@ -66,6 +66,9 @@ getLogger("urllib3").setLevel('WARNING')
 BACKEND_PAGINATION_LIMIT = 50
 BACKEND_PAGINATION_DEFAULT = 25
 
+# Proxy protocols
+PROXY_PROTOCOLS = ['http', 'https']
+
 # Connection error code
 BACKEND_ERROR = 1000
 
@@ -136,6 +139,7 @@ class Backend(object):
 
         self.authenticated = False
         self._token = None
+        self.proxies = None
 
         self.timeout = None  # TODO: Add this option in config file
 
@@ -174,7 +178,8 @@ class Backend(object):
         # First stage. Errors are connection errors (timeout, no session, ...)
         try:
             response = self.session.request(method=method, url=url, headers=headers, json=json,
-                                            params=params, data=data, timeout=self.timeout)
+                                            params=params, data=data, proxies=self.proxies,
+                                            timeout=self.timeout)
             logger.debug("response headers: %s", response.headers)
             logger.debug("response content: %s", response.content)
         except RequestException as e:
@@ -235,7 +240,7 @@ class Backend(object):
 
     token = property(get_token, set_token)
 
-    def login(self, username, password, generate='enabled'):
+    def login(self, username, password, generate='enabled', proxies=None):
         """
         Log into the backend and get the token
 
@@ -256,6 +261,8 @@ class Backend(object):
         :type password: str
         :param generate: Can have these values: enabled | force | disabled
         :type generate: str
+        :param proxies: dict of proxy (http and / or https)
+        :type proxies: dict
         :return: return True if authentication is successfull, otherwise False
         :rtype: bool
         """
@@ -263,6 +270,14 @@ class Backend(object):
 
         if not username or not password:
             raise BackendException(BACKEND_ERROR, "Missing mandatory parameters")
+
+        if proxies:
+            for key in proxies.keys():
+                try:
+                    assert key in PROXY_PROTOCOLS
+                except AssertionError:
+                    raise BackendException(BACKEND_ERROR, "Wrong proxy protocol ", key)
+        self.proxies = proxies
 
         endpoint = 'login'
         json = {u'username': username, u'password': password}
