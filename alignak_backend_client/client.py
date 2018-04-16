@@ -98,9 +98,12 @@ class BackendException(Exception):
 
     def __str__(self):
         """Exception to String"""
-        return "BackendException raised with code {0} and message: {1} - {2}".format(self.code,
-                                                                                     self.message,
-                                                                                     self.response)
+        if self.response and not isinstance(self.response, dict):
+            return "BackendException raised with code {0} and message:" \
+                   " {1} - {2}".format(self.code, self.message, self.response.content)
+
+        return "BackendException raised with code {0} and message:" \
+               " {1} - {2}".format(self.code, self.message, self.response)
 
 
 class Backend(object):
