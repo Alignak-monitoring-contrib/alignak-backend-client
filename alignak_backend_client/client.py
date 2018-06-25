@@ -3,7 +3,7 @@
 # pylint: disable=fixme
 
 #
-# Copyright (C) 2015-2016: AlignakBackend team, see AUTHORS.txt file for contributors
+# Copyright (C) 2015-2018: AlignakBackend team, see AUTHORS.txt file for contributors
 #
 # This file is part of AlignakBackend.
 #
