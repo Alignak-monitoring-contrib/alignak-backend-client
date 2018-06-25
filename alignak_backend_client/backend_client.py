@@ -209,7 +209,7 @@ logger = logging.getLogger('alignak_backend_client.client')
 logger.setLevel('INFO')
 
 # Use the same version as the main alignak backend
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 
 class BackendUpdate(object):
@@ -943,6 +943,7 @@ class BackendUpdate(object):
                         logger.debug(" - %s, single value: %s", field, value)
                         try:
                             int(value, 16)
+                            logger.debug(" - %s, uuid value: %s", field, value)
 
                             if not isinstance(item_data[field], list):
                                 found = value
@@ -955,6 +956,7 @@ class BackendUpdate(object):
                         except ValueError:
                             # Not an integer, consider an item name
                             field_params = {'where': json.dumps({'name': value})}
+                            logger.debug(" - %s, params: %s", field, field_params)
                             if field in ['escalation_period', 'maintenance_period',
                                          'snapshot_period', 'check_period',
                                          'dependency_period', 'notification_period',
@@ -1018,8 +1020,9 @@ class BackendUpdate(object):
                         try:
                             response = self.backend.post(resource_name, item_data, headers=None)
                         except BackendException as exp:
-                            logger.exception("Exception: %s", exp)
-                            logger.error("Response: %s", exp.response)
+                            self.item = item_name
+                            logger.error("Exception: %s", exp)
+                            # logger.error("Response: %s", exp.response)
                             continue
                     else:
                         response = {'_status': 'OK', '_id': '_fake', '_etag': '_fake'}
@@ -1038,8 +1041,9 @@ class BackendUpdate(object):
                                                           item_data, headers=headers,
                                                           inception=True)
                         except BackendException as exp:
+                            self.item = item_name
                             logger.exception("Exception: %s", exp)
-                            logger.error("Response: %s", exp.response)
+                            # logger.error("Response: %s", exp.response)
                             continue
                     else:
                         response = {'_status': 'OK', '_id': '_fake', '_etag': '_fake'}
