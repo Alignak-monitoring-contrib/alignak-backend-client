@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright (C) 2015-2015: Alignak team, see AUTHORS.txt file for contributors
+# Copyright (C) 2015-2018: Alignak team, see AUTHORS.txt file for contributors
 #
 # This file is part of Alignak.
 #
@@ -26,12 +26,9 @@ cd $BASE_PATH
 
 pip install --upgrade pip
 
-# Force upgrading six else uninstalling six 1.10 to upgrade 1.11 breaks the Travis build for Python 3.4 !
-pip install --upgrade six
-# install prog AND tests requirements :
-pip install -r requirements.txt
-pip install -e .
+# Install application AND tests requirements :
 pip install --upgrade -r test/requirements.txt
+pip install -e .
 
 pyversion=$(python -c "import sys; print(''.join(map(str, sys.version_info[:2])))")
 if test -e "test/requirements.py${pyversion}.txt"
