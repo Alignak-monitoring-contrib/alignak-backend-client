@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #
-# Copyright (C) 2015-2016: Frédéric Mohier
+# Copyright (C) 2015-2018: Frédéric Mohier
 #
 # Alignak Backend Client script is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by the Free
@@ -212,7 +212,7 @@ logger.setLevel('INFO')
 __version__ = "1.2.1"
 
 
-class BackendUpdate(object):
+class BackendUpdate(object):  # pylint: disable=useless-object-inheritance
     """Class to interface the Alignak backend to make some operations"""
     embedded_resources = {
         'realm': {
@@ -917,6 +917,7 @@ class BackendUpdate(object):
                         item_data.pop(field)
                         continue
                     # Filter specific backend inner computed fields
+                    # pylint: disable=fixme
                     # todo: list to be completed!
                     if field in ['_overall_state_id']:
                         item_data.pop(field)

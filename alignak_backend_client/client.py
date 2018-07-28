@@ -3,7 +3,7 @@
 # pylint: disable=fixme
 
 #
-# Copyright (C) 2015-2016: AlignakBackend team, see AUTHORS.txt file for contributors
+# Copyright (C) 2015-2018: AlignakBackend team, see AUTHORS.txt file for contributors
 #
 # This file is part of AlignakBackend.
 #
@@ -106,7 +106,7 @@ class BackendException(Exception):
                " {1} - {2}".format(self.code, self.message, self.response)
 
 
-class Backend(object):
+class Backend(object):  # pylint: disable=useless-object-inheritance
     """
     Backend client class to communicate with an Alignak backend
 
@@ -299,13 +299,13 @@ class Backend(object):
         if 'token' in resp:
             self.set_token(token=resp['token'])
             return True
-        elif generate == 'force':  # pragma: no cover - need specific backend tests
+        if generate == 'force':  # pragma: no cover - need specific backend tests
             self.set_token(token=None)
             raise BackendException(BACKEND_ERROR, "Token not provided")
-        elif generate == 'disabled':  # pragma: no cover - need specific backend tests
+        if generate == 'disabled':  # pragma: no cover - need specific backend tests
             logger.error("Token disabled ... to be implemented!")
             return False
-        elif generate == 'enabled':  # pragma: no cover - need specific backend tests
+        if generate == 'enabled':  # pragma: no cover - need specific backend tests
             logger.warning("Token enabled, but none provided, require new token generation")
             return self.login(username, password, 'force')
 
@@ -596,15 +596,16 @@ class Backend(object):
 
         if response.status_code == 200:
             return self.decode(response=response)
-        elif response.status_code == 412:
+
+        if response.status_code == 412:
             # 412 means Precondition failed, but confirm ...
             if inception:
                 # update etag and retry to patch
                 resp = self.get(endpoint)
                 headers = {'If-Match': resp['_etag']}
                 return self.patch(endpoint, data=data, headers=headers, inception=False)
-            else:
-                raise BackendException(response.status_code, response.content)
+
+            raise BackendException(response.status_code, response.content)
         else:  # pragma: no cover - should never occur
             raise BackendException(response.status_code, response.content)
 
@@ -657,15 +658,16 @@ class Backend(object):
 
         if response.status_code == 200:
             return self.decode(response=response)
-        elif response.status_code == 412:
+
+        if response.status_code == 412:
             # 412 means Precondition failed, but confirm ...
             if inception:
                 # update etag and retry to patch
                 resp = self.get(endpoint)
                 headers = {'If-Match': resp['_etag']}
                 return self.patch(endpoint, data=data, headers=headers, inception=False)
-            else:
-                raise BackendException(response.status_code, response.content)
+
+            raise BackendException(response.status_code, response.content)
         else:  # pragma: no cover - should never occur
             raise BackendException(response.status_code, response.content)
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright (C) 2015-2015: Alignak team, see AUTHORS.txt file for contributors
+# Copyright (C) 2015-2018: Alignak team, see AUTHORS.txt file for contributors
 #
 # This file is part of Alignak.
 #
@@ -17,8 +17,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Alignak.  If not, see <http://www.gnu.org/licenses/>.
 
-echo 'pep8 ...'
-pep8 --max-line-length=100 --exclude='*.pyc, *.ini'  --ignore='E402' alignak_backend_client/*
+echo 'pycodestyle ...'
+pycodestyle --max-line-length=100 --exclude='*.pyc, *.ini'  --ignore='E402' alignak_backend_client/*
 if [ $? -ne 0 ]; then
     echo "pep8 not compliant"
     exit
