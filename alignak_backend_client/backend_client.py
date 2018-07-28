@@ -209,7 +209,7 @@ logger = logging.getLogger('alignak_backend_client.client')
 logger.setLevel('INFO')
 
 # Use the same version as the main alignak backend
-__version__ = "1.2.1"
+__version__ = "1.3.0"
 
 
 class BackendUpdate(object):  # pylint: disable=useless-object-inheritance
