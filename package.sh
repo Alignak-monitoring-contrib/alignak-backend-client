@@ -100,14 +100,13 @@ if [ "${git_branch}" = "master" ]; then
       exit 1
    fi
 elif [ "${git_branch}" = "develop" ]; then
-   # Version
-#   version="${version}-dev"
-   version="-dev"
+   # Version is version number + develop
+   version="${version}-develop"
+#   version="-dev"
 
    # Updating deploy script for Alignak develop version
    sed -i -e "s|\"sed_package_name\"|\"${pkg_name}\"|g" dist/.bintray-${output_type}.json
-   sed -i -e "s|\"sed_version_name\"|\"develop-${version_date}\"|g" dist/.bintray-${output_type}.json
-#   sed -i -e "s|\"sed_version_name\"|\"${version_date}\"|g" dist/.bintray-${output_type}.json
+   sed -i -e "s|\"sed_version_name\"|\"${version}-${version_date}\"|g" dist/.bintray-${output_type}.json
    sed -i -e "s|\"sed_version_desc\"|\"Development version\"|g" dist/.bintray-${output_type}.json
    sed -i -e "s|\"sed_version_released\"|\"${version_date}\"|g" dist/.bintray-${output_type}.json
 
@@ -124,12 +123,14 @@ elif [ "${git_branch}" = "develop" ]; then
    fi
 else
    # Version
-#   version="${version}-${git_branch}"
-   version="${git_branch}"
+   if [ "${git_branch}" = "${version}" ]; then
+      version="${git_branch}"
+   else
+      version="${version}-${git_branch}"
+   fi
 
    # Updating deploy script for any other branch / tag
    sed -i -e "s|\"sed_package_name\"|\"${pkg_name}\"|g" dist/.bintray-${output_type}.json
-#   sed -i -e "s|\"sed_version_name\"|\"$1\"|g" dist/.bintray-${output_type}.json
    sed -i -e "s|\"sed_version_name\"|\"${version}-${version_date}\"|g" dist/.bintray-${output_type}.json
    sed -i -e "s|\"sed_version_desc\"|\"Branch $1 version\"|g" dist/.bintray-${output_type}.json
    sed -i -e "s|\"sed_version_released\"|\"${version_date}\"|g" dist/.bintray-${output_type}.json
@@ -176,10 +177,8 @@ if [ "${output_type}" = "deb" ]; then
       --vendor "${pkg_team}" \
       --maintainer "${pkg_team}" \
       --python-package-name-prefix "${python_prefix}" \
-      --python-scripts-executable "python" \
-      --python-install-lib "/usr/lib/${python_prefix}/dist-packages" \
-      --python-bin 'python' \
-      --python-pip 'pip' \
+      --python-scripts-executable "/usr/bin/env python" \
+      --python-install-lib "/usr/lib/python${python_version}/site-packages" \
       --python-install-data '/usr/local' \
       --python-install-bin '/usr/local/bin' \
       --no-python-dependencies \
@@ -200,10 +199,8 @@ elif [ "${output_type}" = "rpm" ]; then
       --vendor "${pkg_team}" \
       --maintainer "${pkg_team}" \
       --python-package-name-prefix "${python_prefix}" \
-      --python-scripts-executable "python" \
+      --python-scripts-executable "/usr/bin/env python" \
       --python-install-lib "/usr/lib/python${python_version}/site-packages" \
-      --python-bin 'python' \
-      --python-pip 'pip' \
       --python-install-data '/usr/local' \
       --python-install-bin '/usr/local/bin' \
       --no-python-dependencies \
@@ -222,8 +219,8 @@ else
       --url "${pkg_url}" \
       --vendor "${pkg_team}" \
       --maintainer "${pkg_team}" \
-      --python-bin 'python' \
-      --python-pip 'pip' \
+      --python-scripts-executable "/usr/bin/env python" \
+      --python-install-lib "/usr/lib/python${python_version}/site-packages" \
       --python-install-data '/usr/local' \
       --python-install-bin '/usr/local/bin' \
       --no-python-dependencies \
