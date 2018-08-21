@@ -64,13 +64,13 @@ echo "Building ${output_type} package for branch ${git_branch}, python version $
 python_prefix="python3"
 if [ "${python_version}" = "2.7" ]; then
    python_prefix="python"
+#   python_version="2"
+#else
+#   python_version="3"
 fi
 
 # Package information - no more python-prefix but kept for compatibility
-pkg_name="alignak-backend-client"
-if [ "${python_version}" = "2.7" ]; then
-   pkg_name="alignak-backend-client"
-fi
+pkg_name="${python_prefix}-alignak-backend-client"
 pkg_description="Alignak backend client, python client for Alignak Backend"
 pkg_url="http://alignak.net"
 pkg_team="Alignak Team (contact@alignak.net)"
@@ -89,62 +89,36 @@ if [ "${git_branch}" = "master" ]; then
    sed -i -e "s|\"sed_version_released\"|\"${version_date}\"|g" dist/.bintray-${output_type}.json
 
    # Stable repo
-   if [ "${output_type}" = "deb" ]; then
-      sed -i -e "s/sed_version_repo/alignak-deb-stable/g" dist/.bintray-${output_type}.json
-   elif [ "${output_type}" = "rpm" ]; then
-      sed -i -e "s/sed_version_repo/alignak-rpm-stable/g" dist/.bintray-${output_type}.json
-   elif [ "${output_type}" = "freebsd" ]; then
-      sed -i -e "s/sed_version_repo/alignak-freebsd-stable/g" dist/.bintray-${output_type}.json
-   else
-      echo "Unmanaged output type: ${output_type}"
-      exit 1
-   fi
+   sed -i -e "s/sed_version_repo/alignak-${output_type}-stable/g" dist/.bintray-${output_type}.json
 elif [ "${git_branch}" = "develop" ]; then
-   # Version
-#   version="${version}-dev"
-   version="-dev"
+   # Version is version number + develop
+   version="${version}-develop"
+#   version="-dev"
 
    # Updating deploy script for Alignak develop version
    sed -i -e "s|\"sed_package_name\"|\"${pkg_name}\"|g" dist/.bintray-${output_type}.json
-   sed -i -e "s|\"sed_version_name\"|\"develop-${version_date}\"|g" dist/.bintray-${output_type}.json
-#   sed -i -e "s|\"sed_version_name\"|\"${version_date}\"|g" dist/.bintray-${output_type}.json
+   sed -i -e "s|\"sed_version_name\"|\"${version}-${version_date}\"|g" dist/.bintray-${output_type}.json
    sed -i -e "s|\"sed_version_desc\"|\"Development version\"|g" dist/.bintray-${output_type}.json
    sed -i -e "s|\"sed_version_released\"|\"${version_date}\"|g" dist/.bintray-${output_type}.json
 
-   # Testing repo
-   if [ "${output_type}" = "deb" ]; then
-      sed -i -e "s/sed_version_repo/alignak-deb-testing/g" dist/.bintray-${output_type}.json
-   elif [ "${output_type}" = "rpm" ]; then
-      sed -i -e "s/sed_version_repo/alignak-rpm-testing/g" dist/.bintray-${output_type}.json
-   elif [ "${output_type}" = "freebsd" ]; then
-      sed -i -e "s/sed_version_repo/alignak-freebsd-testing/g" dist/.bintray-${output_type}.json
-   else
-      echo "Unmanaged output type: ${output_type}"
-      exit 1
-   fi
+   # Use the testing repo
+   sed -i -e "s/sed_version_repo/alignak-${output_type}-testing/g" dist/.bintray-${output_type}.json
 else
    # Version
-#   version="${version}-${git_branch}"
-   version="${git_branch}"
+   if [ "${git_branch}" = "${version}" ]; then
+      version="${git_branch}"
+   else
+      version="${version}-${git_branch}"
+   fi
 
    # Updating deploy script for any other branch / tag
    sed -i -e "s|\"sed_package_name\"|\"${pkg_name}\"|g" dist/.bintray-${output_type}.json
-#   sed -i -e "s|\"sed_version_name\"|\"$1\"|g" dist/.bintray-${output_type}.json
    sed -i -e "s|\"sed_version_name\"|\"${version}-${version_date}\"|g" dist/.bintray-${output_type}.json
    sed -i -e "s|\"sed_version_desc\"|\"Branch $1 version\"|g" dist/.bintray-${output_type}.json
    sed -i -e "s|\"sed_version_released\"|\"${version_date}\"|g" dist/.bintray-${output_type}.json
 
-   # Testing repo
-   if [ "${output_type}" = "deb" ]; then
-      sed -i -e "s/sed_version_repo/alignak-deb-testing/g" dist/.bintray-${output_type}.json
-   elif [ "${output_type}" = "rpm" ]; then
-      sed -i -e "s/sed_version_repo/alignak-rpm-testing/g" dist/.bintray-${output_type}.json
-   elif [ "${output_type}" = "freebsd" ]; then
-      sed -i -e "s/sed_version_repo/alignak-freebsd-testing/g" dist/.bintray-${output_type}.json
-   else
-      echo "Unmanaged output type: ${output_type}"
-      exit 1
-   fi
+   # Use the testing repo
+   sed -i -e "s/sed_version_repo/alignak-${output_type}-testing/g" dist/.bintray-${output_type}.json
 fi
 
 echo "----------"
@@ -176,10 +150,8 @@ if [ "${output_type}" = "deb" ]; then
       --vendor "${pkg_team}" \
       --maintainer "${pkg_team}" \
       --python-package-name-prefix "${python_prefix}" \
-      --python-scripts-executable "python" \
-      --python-install-lib "/usr/lib/${python_prefix}/dist-packages" \
-      --python-bin 'python' \
-      --python-pip 'pip' \
+      --python-scripts-executable "/usr/bin/env python" \
+      --python-install-lib "/usr/local/lib/python${python_version}/site-packages" \
       --python-install-data '/usr/local' \
       --python-install-bin '/usr/local/bin' \
       --no-python-dependencies \
@@ -200,10 +172,8 @@ elif [ "${output_type}" = "rpm" ]; then
       --vendor "${pkg_team}" \
       --maintainer "${pkg_team}" \
       --python-package-name-prefix "${python_prefix}" \
-      --python-scripts-executable "python" \
+      --python-scripts-executable "/usr/bin/env python" \
       --python-install-lib "/usr/lib/python${python_version}/site-packages" \
-      --python-bin 'python' \
-      --python-pip 'pip' \
       --python-install-data '/usr/local' \
       --python-install-bin '/usr/local/bin' \
       --no-python-dependencies \
@@ -222,8 +192,8 @@ else
       --url "${pkg_url}" \
       --vendor "${pkg_team}" \
       --maintainer "${pkg_team}" \
-      --python-bin 'python' \
-      --python-pip 'pip' \
+      --python-scripts-executable "/usr/bin/env python" \
+      --python-install-lib "/usr/local/lib/python${python_version}/site-packages" \
       --python-install-data '/usr/local' \
       --python-install-bin '/usr/local/bin' \
       --no-python-dependencies \

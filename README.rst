@@ -59,7 +59,7 @@ Debian::
     sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv D401AB61
 
     sudo apt-get update
-    sudo apt install alignak-backend-client
+    sudo apt install python-alignak-backend-client
 
 CentOS::
 
