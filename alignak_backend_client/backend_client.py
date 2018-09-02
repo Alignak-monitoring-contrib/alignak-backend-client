@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 #
-# Copyright (C) 2015-2016: Frédéric Mohier
+# Copyright (C) 2015-2018: Frédéric Mohier
 #
 # Alignak Backend Client script is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by the Free
@@ -209,10 +209,10 @@ logger = logging.getLogger('alignak_backend_client.client')
 logger.setLevel('INFO')
 
 # Use the same version as the main alignak backend
-__version__ = "0.9.3"
+__version__ = "1.3.1"
 
 
-class BackendUpdate(object):
+class BackendUpdate(object):  # pylint: disable=useless-object-inheritance
     """Class to interface the Alignak backend to make some operations"""
     embedded_resources = {
         'realm': {
@@ -237,6 +237,9 @@ class BackendUpdate(object):
             '_realm': 1,
             'host_notification_period': 1, 'host_notification_commands': 1,
             'service_notification_period': 1, 'service_notification_commands': 1
+        },
+        'userrestrictrole': {
+            '_realm': 1, 'user': 1
         },
         'host': {
             '_realm': 1, '_templates': 1,
@@ -688,6 +691,8 @@ class BackendUpdate(object):
                     logger.info("Dry-run mode: should have deleted all %s", resource_name)
             else:
                 params = {'where': json.dumps({'name': name})}
+                if resource_name in ['host', 'service', 'user']:
+                    params = {'where': json.dumps({'name': name, '_is_template': self.model})}
                 if resource_name == 'service' and '/' in name:
                     splitted_name = name.split('/')
                     name = splitted_name[0] + '_' + splitted_name[1]
@@ -811,7 +816,8 @@ class BackendUpdate(object):
             count = 0
             for json_item in json_data:
                 logger.info("-> json item: %s", json_item)
-                if name is None and ('name' not in json_item or not json_item['name']):
+                if resource_name not in ['history', 'userrestrictrole', 'logcheckresult'] \
+                        and name is None and ('name' not in json_item or not json_item['name']):
                     logger.warning("-> unnamed '%s'!", resource_name)
                     continue
 
@@ -820,12 +826,36 @@ class BackendUpdate(object):
                 if 'name' in json_item:
                     item_name = json_item['name']
 
+                # Got the item name
+                params = {'name': item_name}
+
+                if resource_name == 'service' and 'host' in json_item:
+                    # Get host from name
+                    host_search = {'name': json_item['host']}
+                    if '_is_template' in json_item:
+                        host_search.update({'_is_template': json_item['_is_template']})
+                    logger.info("Host search: %s", host_search)
+                    resp_host = self.backend.get(
+                        'host', params={'where': json.dumps(host_search)})
+                    if resp_host['_items']:
+                        host = resp_host['_items'][0]
+                        logger.info("Got host '%s' for the service '%s'", host['name'], item_name)
+                    else:
+                        logger.warning("Host not found: '%s' for the service: %s!",
+                                       json_item['host'], item_name)
+                        continue
+
+                    params = {'name': item_name, 'host': host['_id']}
+
                 if resource_name == 'service' and '/' in item_name:
                     splitted_name = item_name.split('/')
 
                     # Get host from name
+                    host_search = {'name': splitted_name[0]}
+                    if '_is_template' in json_item:
+                        host_search.update({'_is_template': json_item['_is_template']})
                     resp_host = self.backend.get(
-                        'host', params={'where': json.dumps({'name': splitted_name[0]})})
+                        'host', params={'where': json.dumps(host_search)})
                     if resp_host['_items']:
                         host = resp_host['_items'][0]
                         logger.info("Got host '%s' for the service '%s'",
@@ -836,27 +866,32 @@ class BackendUpdate(object):
                         continue
 
                     item_name = splitted_name[1]
-                    params = {'where': json.dumps({'name': item_name, 'host': host['_id']})}
-                # Got the item name
-                params = {'where': json.dumps({'name': item_name})}
+                    params = {'name': item_name, 'host': host['_id']}
 
-                logger.info("Trying to get %s: '%s'", resource_name, item_name)
-                response = self.backend.get(resource_name, params=params)
-                if response['_items']:
-                    found_item = response['_items'][0]
-                    found_id = found_item['_id']
-                    found_etag = found_item['_etag']
-                    logger.info("-> found %s '%s': %s", resource_name, item_name, found_id)
+                if '_is_template' in json_item:
+                    params.update({'_is_template': json_item['_is_template']})
 
-                    if not update:
-                        logger.warning("-> '%s' %s cannot be created because it already exists!",
-                                       resource_name, item_name)
-                        continue
-                else:
-                    if update:
-                        logger.warning("-> '%s' %s cannot be updated because it does not exist!",
-                                       resource_name, item_name)
-                        continue
+                params = {'where': json.dumps(params)}
+
+                if name:
+                    logger.info("Trying to get %s: '%s', params: %s",
+                                resource_name, item_name, params)
+                    response = self.backend.get(resource_name, params=params)
+                    if response['_items']:
+                        found_item = response['_items'][0]
+                        found_id = found_item['_id']
+                        found_etag = found_item['_etag']
+                        logger.info("-> found %s '%s': %s", resource_name, item_name, found_id)
+
+                        if not update:
+                            logger.warning("-> '%s' %s cannot be created because it already "
+                                           "exists!", resource_name, item_name)
+                            continue
+                    else:
+                        if update:
+                            logger.warning("-> '%s' %s cannot be updated because it does not "
+                                           "exist!", resource_name, item_name)
+                            continue
 
                 # Item data updated with provided information if some
 
@@ -882,6 +917,7 @@ class BackendUpdate(object):
                         item_data.pop(field)
                         continue
                     # Filter specific backend inner computed fields
+                    # pylint: disable=fixme
                     # todo: list to be completed!
                     if field in ['_overall_state_id']:
                         item_data.pop(field)
@@ -908,6 +944,7 @@ class BackendUpdate(object):
                         logger.debug(" - %s, single value: %s", field, value)
                         try:
                             int(value, 16)
+                            logger.debug(" - %s, uuid value: %s", field, value)
 
                             if not isinstance(item_data[field], list):
                                 found = value
@@ -920,6 +957,7 @@ class BackendUpdate(object):
                         except ValueError:
                             # Not an integer, consider an item name
                             field_params = {'where': json.dumps({'name': value})}
+                            logger.debug(" - %s, params: %s", field, field_params)
                             if field in ['escalation_period', 'maintenance_period',
                                          'snapshot_period', 'check_period',
                                          'dependency_period', 'notification_period',
@@ -975,20 +1013,39 @@ class BackendUpdate(object):
 
                 if not update:
                     # Trying to create a new element
+                    if not item_data['name']:
+                        item_data.pop('name')
                     logger.info("-> trying to create the %s: %s.", resource_name, item_name)
                     logger.debug("-> with: %s.", item_data)
                     if not self.dry_run:
-                        response = self.backend.post(resource_name, item_data, headers=None)
+                        try:
+                            response = self.backend.post(resource_name, item_data, headers=None)
+                        except BackendException as exp:
+                            self.item = item_name
+                            logger.error("Exception: %s", exp)
+                            # logger.error("Response: %s", exp.response)
+                            continue
                     else:
                         response = {'_status': 'OK', '_id': '_fake', '_etag': '_fake'}
                 else:
+                    if not name:
+                        logger.warning("-> can not update '%s' with no name!", resource_name)
+                        continue
+
                     # Trying to update an element
                     logger.info("-> trying to update the %s: %s.", resource_name, item_name)
                     logger.debug("-> with: %s.", item_data)
                     if not self.dry_run:
-                        headers = {'Content-Type': 'application/json', 'If-Match': found_etag}
-                        response = self.backend.patch(resource_name + '/' + found_id,
-                                                      item_data, headers=headers, inception=True)
+                        try:
+                            headers = {'Content-Type': 'application/json', 'If-Match': found_etag}
+                            response = self.backend.patch(resource_name + '/' + found_id,
+                                                          item_data, headers=headers,
+                                                          inception=True)
+                        except BackendException as exp:
+                            self.item = item_name
+                            logger.exception("Exception: %s", exp)
+                            # logger.error("Response: %s", exp.response)
+                            continue
                     else:
                         response = {'_status': 'OK', '_id': '_fake', '_etag': '_fake'}
 
@@ -1031,7 +1088,7 @@ def main():
     """
     bc = BackendUpdate()
     bc.initialize()
-    logger.debug("backend_client, version: %s", __version__)
+    logger.info("backend_client, version: %s", __version__)
     logger.debug("~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
     success = False

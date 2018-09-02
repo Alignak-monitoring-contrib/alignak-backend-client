@@ -326,6 +326,30 @@ class TestAlignakBackendCli(unittest2.TestCase):
         ))
         assert exit_code == 0
 
+    def test_start_02_create_nrpe(self):
+        # pylint: disable=no-self-use
+        """ CLI to create backend objects - several services with the same name"""
+
+        work_dir = os.path.abspath(os.path.dirname(__file__))
+        work_dir = os.path.join(work_dir, 'json/nrpe')
+
+        print("Creating backend elements...")
+        # Create commands
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t command -d commands.json add' % work_dir
+        ))
+        assert exit_code == 0
+
+        # Create templates
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t host -d hosts-templates.json add' % work_dir
+        ))
+        assert exit_code == 0
+        exit_code = subprocess.call(shlex.split(
+            'python ../alignak_backend_client/backend_client.py -f "%s" -t service -d services-templates.json add' % work_dir
+        ))
+        assert exit_code == 0
+
     def test_start_03_get_elements(self):
         # pylint: disable=no-self-use
         """ CLI to get default backend objects"""
@@ -544,4 +568,3 @@ class TestAlignakBackendCli(unittest2.TestCase):
             'python ../alignak_backend_client/backend_client.py -f "%s" -t service list' % work_dir
         ))
         assert exit_code == 0
-

@@ -136,7 +136,7 @@ class TestDeleteClient(unittest2.TestCase):
             response = backend.delete('/'.join(['timeperiod', '5' + timeperiod_id]), headers)
         ex = cm.exception
         print('exception:', str(ex.code))
-        assert_true(ex.code == 1003, str(ex))
+        assert_true(ex.code == 404, str(ex))
 
     def test_3_delete_connection_error(self):
         """

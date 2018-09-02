@@ -9,14 +9,14 @@
 """
 
 # Application version and manifest
-VERSION = (1, 0, 0)
+VERSION = (1, 4, 4)
 
 __application__ = u"Alignak Backend client"
 __short_version__ = '.'.join((str(each) for each in VERSION[:2]))
 __version__ = '.'.join((str(each) for each in VERSION[:4]))
 __author__ = u"Alignak team"
 __author_email__ = u"david.durieux@alignak.net"
-__copyright__ = u"(c) 2015-2017 - %s" % __author__
+__copyright__ = u"(c) 2015-2018 - %s" % __author__
 __license__ = u"GNU Affero General Public License, version 3"
 __description__ = u"Alignak backend client library"
 __releasenotes__ = u"""Alignak backend client library"""

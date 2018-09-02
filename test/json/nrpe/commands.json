@@ -1,0 +1,46 @@
+[
+    {
+        "_realm": "All",
+        "_sub_realm": true,
+        "alias": "Check NRPE version",
+        "command_line": "$NRPE_PLUGINS_DIR$/check_nrpe -H $HOSTADDRESS$ -t $_HOSTNRPE_TIMEOUT$ -u $_HOSTNRPE_SSL$",
+        "enable_environment_macros": false,
+        "imported_from": "alignak-checks-nrpe",
+        "name": "check_nrpe_version",
+        "poller_tag": "",
+        "timeout": -1
+    },
+    {
+        "_realm": "All",
+        "_sub_realm": true,
+        "alias": "Check alive",
+        "command_line": "$NRPE_PLUGINS_DIR$/check_nrpe -H $HOSTADDRESS$ -t $_HOSTNRPE_TIMEOUT$ -u $_HOSTNRPE_SSL$",
+        "enable_environment_macros": false,
+        "imported_from": "alignak-checks-nrpe",
+        "name": "check_nrpe_alive",
+        "poller_tag": "",
+        "timeout": -1
+    },
+    {
+        "_realm": "All",
+        "_sub_realm": true,
+        "alias": "NRPE check",
+        "command_line": "$NRPE_PLUGINS_DIR$/check_nrpe -H $HOSTADDRESS$ -t $_HOSTNRPE_TIMEOUT$ -u $_HOSTNRPE_SSL$ -c $ARG1$",
+        "enable_environment_macros": false,
+        "imported_from": "alignak-checks-nrpe",
+        "name": "check_nrpe",
+        "poller_tag": "",
+        "timeout": -1
+    },
+    {
+        "_realm": "All",
+        "_sub_realm": true,
+        "alias": "NRPE check with arguments",
+        "command_line": "$NRPE_PLUGINS_DIR$/check_nrpe -H $HOSTADDRESS$ -t $_HOSTNRPE_TIMEOUT$ -u $_HOSTNRPE_SSL$ -c $ARG1$ -a $ARG2$ $ARG3$ $ARG4$ $ARG5$ $ARG6$ $ARG7$ $ARG8$ $ARG9$",
+        "enable_environment_macros": false,
+        "imported_from": "alignak-checks-nrpe",
+        "name": "check_nrpe_args",
+        "poller_tag": "",
+        "timeout": -1
+    }
+]

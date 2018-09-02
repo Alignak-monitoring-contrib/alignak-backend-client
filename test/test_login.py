@@ -79,7 +79,6 @@ class TestLoginLogout(unittest2.TestCase):
         print('authenticated:', backend.authenticated)
         print('endpoint:', backend.url_endpoint_root)
         print('token:', backend.token)
-        assert_false(backend.connected)
         assert_false(backend.authenticated)
         assert_true(backend.url_endpoint_root == self.backend_address)
         assert_equal(backend.token, None)
@@ -91,7 +90,6 @@ class TestLoginLogout(unittest2.TestCase):
         print('authenticated:', backend.authenticated)
         print('endpoint:', backend.url_endpoint_root)
         print('token:', backend.token)
-        assert_false(backend.connected)
         assert_false(backend.authenticated)
         assert_true(backend.url_endpoint_root == self.backend_address)
         assert_equal(backend.token, None)
@@ -113,7 +111,7 @@ class TestLoginLogout(unittest2.TestCase):
             backend.login(None, None)
         ex = cm.exception
         print('exception:', str(ex.code))
-        assert_true(ex.code == 1001, str(ex))
+        assert_true(ex.code == 1000, str(ex))
         assert_true("Missing mandatory parameters" in str(ex))
 
         print('Login - missing credentials ...')
@@ -121,7 +119,7 @@ class TestLoginLogout(unittest2.TestCase):
             backend.login('', '')
         ex = cm.exception
         print('exception:', str(ex.code))
-        assert_true(ex.code == 1001, str(ex))
+        assert_true(ex.code == 1000, str(ex))
         assert_true("Missing mandatory parameters" in str(ex))
 
         print('Login - missing credentials ...')
@@ -129,9 +127,9 @@ class TestLoginLogout(unittest2.TestCase):
             backend.login('admin', '')
         ex = cm.exception
         print('exception:', str(ex.code))
-        assert_true(ex.code == 1001, str(ex))
+        assert_true(ex.code == 1000, str(ex))
 
-        print("invalid username/password, login refused - returns false")
+        print("invalid username/password, login refused")
         result = backend.login('admin', 'bad_password')
         assert_false(result)
         assert_false(backend.authenticated)
@@ -209,21 +207,21 @@ class TestLoginLogout(unittest2.TestCase):
             backend.get('host')
         ex = cm.exception
         print('exception:', str(ex.code))
-        assert_true(ex.code == 1001, str(ex))
+        assert_true(ex.code == 401, str(ex))
 
         print('get_all object ... must be refused!')
         with assert_raises(BackendException) as cm:
             backend.get_all('host')
         ex = cm.exception
         print('exception:', str(ex.code))
-        assert_true(ex.code == 1001, str(ex))
+        assert_true(ex.code == 401, str(ex))
 
         print('get all domains ... must be refused!')
         with assert_raises(BackendException) as cm:
             backend.get_domains()
         ex = cm.exception
         print('exception:', str(ex.code))
-        assert_true(ex.code == 1001, str(ex))
+        assert_true(ex.code == 401, str(ex))
 
         print('post data ... must be refused!')
         with assert_raises(BackendException) as cm:
@@ -231,7 +229,7 @@ class TestLoginLogout(unittest2.TestCase):
             backend.post('user', data=data)
         ex = cm.exception
         print('exception:', str(ex.code))
-        assert_true(ex.code == 1001, str(ex))
+        assert_true(ex.code == 401, str(ex))
 
         print('patch data ... must be refused!')
         with assert_raises(BackendException) as cm:
@@ -240,7 +238,7 @@ class TestLoginLogout(unittest2.TestCase):
             backend.patch('user', data=data, headers=headers)
         ex = cm.exception
         print('exception:', str(ex.code))
-        assert_true(ex.code == 1001, str(ex))
+        assert_true(ex.code == 405, str(ex))
 
         print('delete data ... must be refused!')
         with assert_raises(BackendException) as cm:
@@ -248,7 +246,7 @@ class TestLoginLogout(unittest2.TestCase):
             backend.delete('user', headers=headers)
         ex = cm.exception
         print('exception:', str(ex.code))
-        assert_true(ex.code == 1001, str(ex))
+        assert_true(ex.code == 401, str(ex))
 
 
 class TestLoginLogoutConnection(unittest2.TestCase):

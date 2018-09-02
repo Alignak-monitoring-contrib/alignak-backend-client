@@ -1,41 +1,154 @@
 language: python
 sudo: true
 python:
-  - "2.7"
-  - "3.4"
+  - '3.6'
+  - '3.5'
+  - '3.4'
+  - '2.7'
 
 services:
   - mongodb
 
-# command to install dependencies
-# some are only used for travis/coveralls so we are installing them here only
 install:
+  # Install all Python requirements (application and tests)
   - ./test/setup_test.sh
+  # To help eventual debug: knowing which exact versions are in use can be rather useful.
+  - pip freeze
 
 script:
-  # so to help eventual debug: knowing what exact versions are in use can be rather useful.
-  - pip freeze
-  # Code static analysis
-  - pep8 --max-line-length=100 --exclude='*.pyc, *.cfg, *.log' --ignore='E402' alignak_backend_client/*
-  - pylint --rcfile=.pylintrc alignak_backend_client/
-  - pep257 --select=D300 alignak_backend_client
-  # Code dynamic analysis
+  # Code dynamic analysis and tests
   - cd test
-  # Delete previously existing coverage results
-  - coverage erase
   # Run test suite with py.test running its coverage plugin - for backend client library
   - pytest -v --cov=alignak_backend_client test_*.py
   # Run test suite with py.test running its coverage plugin - for alignak-backend-cli utility
   - pytest -v --cov=backend_client --cov-config .coveragerc --cov-append alignak-backend-cli-tests.py
-  # Report about coverage
-  - coverage report -m
-  # Test code static analysis
-  - pep8 --max-line-length=100 --ignore='E402' test_*.py
-  - pylint --rcfile=../.pylintrc test_*.py
+  # Report about coverage - Upload coverage results to codecov
+  - bash <(curl -s https://codecov.io/bash)
   - cd ..
 
 after_success:
   # to get coverage data with relative paths and not absolute we have to
   # execute coveralls from the base directory of the project,
   # so we need to move the .coverage file here :
-  mv test/.coverage . && coveralls --rcfile=test/.coveragerc
+  - mv test/.coverage . && coveralls --rcfile=test/.coveragerc
+  - ./package.sh $TRAVIS_BRANCH $TRAVIS_PYTHON_VERSION
+
+jobs:
+  include:
+    - stage: Coding standard
+      python: 3.6
+      script:
+        # Code static analysis
+        - pycodestyle --max-line-length=100 --exclude='*.pyc, *.cfg, *.log' --ignore='E402' alignak_backend_client/*
+        - pylint --rcfile=.pylintrc alignak_backend_client/
+        - pep257 --select=D300 alignak_backend_client
+    - stage: Pypi deployment
+      python: 3.6
+      script: echo "Deploying to PyPi..."
+      if: (tag IS present)
+      deploy:
+        - provider: pypi
+          distributions: "sdist bdist_wheel"
+          skip_existing: true
+          user: alignak
+          password:
+            secure: "xoWxthi5hTXh9Uim+zVBLb066zXxAE7QGY7p6NXgNrBOrKdmbY3xQYuI6WcnIeyAxJieI/bF178HlXXXc2w/jmGYkI0BJO0jz8x0De0pCsbOX/z8eORv4z6Yg0wc/5Ojtmc4Ud5q8EUFy2xOrnvFKXPmxN2J85ibavut7OUhZcSshyMYrUfks1+Mki3yChi5uitj2n5Aq6LQBGintXCcgkfEsxx2v9z8wz39fl44clwrZsQkyL4dzzT1ItSGGnhvO1e4YBNogLLNOuCmBIN+ISesObN9rMu+GJBgakwa7/FdJpDQM/5xSSM4/n+qYTi8JG2CSJOJtYWGeBOwG58jL+E9X9YHOBBBMfDdzeHMer4P3gTjmXG4zNgw7OTA1XpxiP8FWWB28OwByCeCsO3V6C7KzcaIs1ZOpT3NXx99BDScqZvp9cnerfZOZKugUikWMPABuSWOYnz7RNG2eJCoWwZWVgpgAvZKTpuOllvibuRr2MYtMHjH0bdqGoa5TzqCNP0XrP+g5Iuz8lIn32Uyq+p6gBm8wz9XEeG+Azo8zMF5HMJyos/0T5+0gw+9GjjH/G8tX0Lkg19OoyWDalCWGJ9G3rweSaXTZKjOyZu1c48W1SsyipAfGtkSq/qbFpETsIh/U4ewwYU0QDpglVoMBBP7jYSo0B9o1d2NQwN+mJQ="
+          on:
+            branch: develop
+            tags: true
+    - stage: Debian packaging - Python 2
+      python: 2.7
+      if: (tag IS blank)
+      script:
+        - echo "Packaging for BinTray..."
+        - ./package.sh $TRAVIS_BRANCH $TRAVIS_PYTHON_VERSION deb
+      deploy:
+      - provider: bintray
+        skip_cleanup: true
+        file: dist/.bintray-deb.json
+        on:
+          all_branches: true
+        user: mohierf
+        key:
+          secure: "TQTqUIqMpMz6EKZmklH+19kYBqsHcxjPFPDCwBs1OoLrYcp3E+MxVf8JKnqbtZGXAeHttAUwIftSBCe+IkbUmEZLvUEutpDaGpBZAqZb07U+WilAslkW8WjWO6PQVzjry6dbf1H3LFb79uB1cXFaKQV8qtJpv5DL2i+9HvGSl7C9Z+d2K6ccrGQmUThQqvdSfhoBDsBWeO65ccX+32eomHzm8tDL9RXifRXa+z8R1QPpAYqztnuzuaqf8kuDRTROYvXIz4uwjSyqP6kaeUl+IObMg8yUXh0WilXFhUtku4geitcCOZ+oGAxe4R5wEhaZbo/jL4u4yD+gd0uk5XlPASkqUB7w6WSly2zll4A7JR4ZnbCssz0ekNyIBSNIzlrCDGxTs59vQ/lXb7wgat40CbMwJmp9smks4CV5aDU1t6O8+wtXuBy9hXTE4mI3Ny5yoFKd49FE71vmWwpMbkby5XKk4NEHFtKCPoMlLwulZ6cwr7WllimoksZl3aYBqnVT0QugjA72qIZLOQgHpGJ/xRSVOyO2L9kJmmpBHSH5jyqt9EZtOKazz/wGv/5hA2cX2IMfo9DxeQmxf6pb7OUCd6u0nMte75hNfaZlyAis6OHWinYCjmtWTeo1AZO8Iuopxlf69plU8WWfbOwzsYJ2zlj/62+cLxQIVhrXQoQsPGg="
+    - stage: Debian packaging - Python 3
+      python: 3.6
+      if: (tag IS blank)
+      script:
+        - echo "Packaging for BinTray..."
+        - ./package.sh $TRAVIS_BRANCH $TRAVIS_PYTHON_VERSION deb
+      deploy:
+      - provider: bintray
+        skip_cleanup: true
+        file: dist/.bintray-deb.json
+        on:
+          all_branches: true
+        user: mohierf
+        key:
+          secure: "TQTqUIqMpMz6EKZmklH+19kYBqsHcxjPFPDCwBs1OoLrYcp3E+MxVf8JKnqbtZGXAeHttAUwIftSBCe+IkbUmEZLvUEutpDaGpBZAqZb07U+WilAslkW8WjWO6PQVzjry6dbf1H3LFb79uB1cXFaKQV8qtJpv5DL2i+9HvGSl7C9Z+d2K6ccrGQmUThQqvdSfhoBDsBWeO65ccX+32eomHzm8tDL9RXifRXa+z8R1QPpAYqztnuzuaqf8kuDRTROYvXIz4uwjSyqP6kaeUl+IObMg8yUXh0WilXFhUtku4geitcCOZ+oGAxe4R5wEhaZbo/jL4u4yD+gd0uk5XlPASkqUB7w6WSly2zll4A7JR4ZnbCssz0ekNyIBSNIzlrCDGxTs59vQ/lXb7wgat40CbMwJmp9smks4CV5aDU1t6O8+wtXuBy9hXTE4mI3Ny5yoFKd49FE71vmWwpMbkby5XKk4NEHFtKCPoMlLwulZ6cwr7WllimoksZl3aYBqnVT0QugjA72qIZLOQgHpGJ/xRSVOyO2L9kJmmpBHSH5jyqt9EZtOKazz/wGv/5hA2cX2IMfo9DxeQmxf6pb7OUCd6u0nMte75hNfaZlyAis6OHWinYCjmtWTeo1AZO8Iuopxlf69plU8WWfbOwzsYJ2zlj/62+cLxQIVhrXQoQsPGg="
+    - stage: RPM packaging - Python 2
+      python: 2.7
+      if: (tag IS blank)
+      install:
+        - echo "Installing packaging requirements..."
+        - sudo apt-get install -y rpm
+      script:
+        - echo "Packaging for BinTray..."
+        - ./package.sh $TRAVIS_BRANCH $TRAVIS_PYTHON_VERSION rpm
+      deploy:
+      - provider: bintray
+        skip_cleanup: true
+        file: dist/.bintray-rpm.json
+        on:
+          all_branches: true
+        user: mohierf
+        key:
+          secure: "TQTqUIqMpMz6EKZmklH+19kYBqsHcxjPFPDCwBs1OoLrYcp3E+MxVf8JKnqbtZGXAeHttAUwIftSBCe+IkbUmEZLvUEutpDaGpBZAqZb07U+WilAslkW8WjWO6PQVzjry6dbf1H3LFb79uB1cXFaKQV8qtJpv5DL2i+9HvGSl7C9Z+d2K6ccrGQmUThQqvdSfhoBDsBWeO65ccX+32eomHzm8tDL9RXifRXa+z8R1QPpAYqztnuzuaqf8kuDRTROYvXIz4uwjSyqP6kaeUl+IObMg8yUXh0WilXFhUtku4geitcCOZ+oGAxe4R5wEhaZbo/jL4u4yD+gd0uk5XlPASkqUB7w6WSly2zll4A7JR4ZnbCssz0ekNyIBSNIzlrCDGxTs59vQ/lXb7wgat40CbMwJmp9smks4CV5aDU1t6O8+wtXuBy9hXTE4mI3Ny5yoFKd49FE71vmWwpMbkby5XKk4NEHFtKCPoMlLwulZ6cwr7WllimoksZl3aYBqnVT0QugjA72qIZLOQgHpGJ/xRSVOyO2L9kJmmpBHSH5jyqt9EZtOKazz/wGv/5hA2cX2IMfo9DxeQmxf6pb7OUCd6u0nMte75hNfaZlyAis6OHWinYCjmtWTeo1AZO8Iuopxlf69plU8WWfbOwzsYJ2zlj/62+cLxQIVhrXQoQsPGg="
+    - stage: RPM packaging - Python 3
+      python: 3.6
+      if: (tag IS blank)
+      install:
+        - echo "Installing packaging requirements..."
+        - sudo apt-get install -y rpm
+      script:
+        - echo "Packaging for BinTray..."
+        - ./package.sh $TRAVIS_BRANCH $TRAVIS_PYTHON_VERSION rpm
+      deploy:
+      - provider: bintray
+        skip_cleanup: true
+        file: dist/.bintray-rpm.json
+        on:
+          all_branches: true
+        user: mohierf
+        key:
+          secure: "TQTqUIqMpMz6EKZmklH+19kYBqsHcxjPFPDCwBs1OoLrYcp3E+MxVf8JKnqbtZGXAeHttAUwIftSBCe+IkbUmEZLvUEutpDaGpBZAqZb07U+WilAslkW8WjWO6PQVzjry6dbf1H3LFb79uB1cXFaKQV8qtJpv5DL2i+9HvGSl7C9Z+d2K6ccrGQmUThQqvdSfhoBDsBWeO65ccX+32eomHzm8tDL9RXifRXa+z8R1QPpAYqztnuzuaqf8kuDRTROYvXIz4uwjSyqP6kaeUl+IObMg8yUXh0WilXFhUtku4geitcCOZ+oGAxe4R5wEhaZbo/jL4u4yD+gd0uk5XlPASkqUB7w6WSly2zll4A7JR4ZnbCssz0ekNyIBSNIzlrCDGxTs59vQ/lXb7wgat40CbMwJmp9smks4CV5aDU1t6O8+wtXuBy9hXTE4mI3Ny5yoFKd49FE71vmWwpMbkby5XKk4NEHFtKCPoMlLwulZ6cwr7WllimoksZl3aYBqnVT0QugjA72qIZLOQgHpGJ/xRSVOyO2L9kJmmpBHSH5jyqt9EZtOKazz/wGv/5hA2cX2IMfo9DxeQmxf6pb7OUCd6u0nMte75hNfaZlyAis6OHWinYCjmtWTeo1AZO8Iuopxlf69plU8WWfbOwzsYJ2zlj/62+cLxQIVhrXQoQsPGg="
+#    - stage: FreeBSD packaging - Python 2
+#      python: 2.7
+#      if: (tag IS blank)
+#      script:
+#        - echo "Packaging for BinTray..."
+#        - ./package.sh $TRAVIS_BRANCH $TRAVIS_PYTHON_VERSION freebsd
+#      deploy:
+#      - provider: bintray
+#        skip_cleanup: true
+#        file: dist/.bintray-freebsd.json
+#        on:
+#          all_branches: true
+#        user: mohierf
+#        key:
+#          secure: "TQTqUIqMpMz6EKZmklH+19kYBqsHcxjPFPDCwBs1OoLrYcp3E+MxVf8JKnqbtZGXAeHttAUwIftSBCe+IkbUmEZLvUEutpDaGpBZAqZb07U+WilAslkW8WjWO6PQVzjry6dbf1H3LFb79uB1cXFaKQV8qtJpv5DL2i+9HvGSl7C9Z+d2K6ccrGQmUThQqvdSfhoBDsBWeO65ccX+32eomHzm8tDL9RXifRXa+z8R1QPpAYqztnuzuaqf8kuDRTROYvXIz4uwjSyqP6kaeUl+IObMg8yUXh0WilXFhUtku4geitcCOZ+oGAxe4R5wEhaZbo/jL4u4yD+gd0uk5XlPASkqUB7w6WSly2zll4A7JR4ZnbCssz0ekNyIBSNIzlrCDGxTs59vQ/lXb7wgat40CbMwJmp9smks4CV5aDU1t6O8+wtXuBy9hXTE4mI3Ny5yoFKd49FE71vmWwpMbkby5XKk4NEHFtKCPoMlLwulZ6cwr7WllimoksZl3aYBqnVT0QugjA72qIZLOQgHpGJ/xRSVOyO2L9kJmmpBHSH5jyqt9EZtOKazz/wGv/5hA2cX2IMfo9DxeQmxf6pb7OUCd6u0nMte75hNfaZlyAis6OHWinYCjmtWTeo1AZO8Iuopxlf69plU8WWfbOwzsYJ2zlj/62+cLxQIVhrXQoQsPGg="
+#    - stage: FreeBSD packaging - Python 3
+#      python: 3.6
+#      if: (tag IS blank)
+#      script:
+#        - echo "Packaging for BinTray..."
+#        - ./package.sh $TRAVIS_BRANCH $TRAVIS_PYTHON_VERSION freebsd
+#      deploy:
+#      - provider: bintray
+#        skip_cleanup: true
+#        file: dist/.bintray-freebsd.json
+#        on:
+#          all_branches: true
+#        user: mohierf
+#        key:
+#          secure: "TQTqUIqMpMz6EKZmklH+19kYBqsHcxjPFPDCwBs1OoLrYcp3E+MxVf8JKnqbtZGXAeHttAUwIftSBCe+IkbUmEZLvUEutpDaGpBZAqZb07U+WilAslkW8WjWO6PQVzjry6dbf1H3LFb79uB1cXFaKQV8qtJpv5DL2i+9HvGSl7C9Z+d2K6ccrGQmUThQqvdSfhoBDsBWeO65ccX+32eomHzm8tDL9RXifRXa+z8R1QPpAYqztnuzuaqf8kuDRTROYvXIz4uwjSyqP6kaeUl+IObMg8yUXh0WilXFhUtku4geitcCOZ+oGAxe4R5wEhaZbo/jL4u4yD+gd0uk5XlPASkqUB7w6WSly2zll4A7JR4ZnbCssz0ekNyIBSNIzlrCDGxTs59vQ/lXb7wgat40CbMwJmp9smks4CV5aDU1t6O8+wtXuBy9hXTE4mI3Ny5yoFKd49FE71vmWwpMbkby5XKk4NEHFtKCPoMlLwulZ6cwr7WllimoksZl3aYBqnVT0QugjA72qIZLOQgHpGJ/xRSVOyO2L9kJmmpBHSH5jyqt9EZtOKazz/wGv/5hA2cX2IMfo9DxeQmxf6pb7OUCd6u0nMte75hNfaZlyAis6OHWinYCjmtWTeo1AZO8Iuopxlf69plU8WWfbOwzsYJ2zlj/62+cLxQIVhrXQoQsPGg="
